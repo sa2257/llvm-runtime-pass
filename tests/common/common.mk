@@ -1,26 +1,33 @@
 SOURCES   := $(HW_SRCS) $(HOST_SRCS) $(RT_SRCS)
 LLVMS     := $(SOURCES:%.c=%.ll)
-RTPASS    := $(HW_SRCS:%.c=%-rt.ll) $(RT_SRCS:%.c=%.ll)
+HOST      := $(HOST_SRCS:%.c=%.ll)
+RTPASS    := $(HW_SRCS:%.c=%-rt.ll)
+RTOBJT    := $(RT_SRCS:%.c=%.o)
 PROFPASS  := $(SOURCES:%.c=%-prof.ll)
-PASSES    := $(PROFPASS)  $(RTPASS)
+PASSES    := $(PROFPASS)  $(RTPASS) $(RTOBJT)
 TARGET    := $(KERNEL)
 SIMPLE    := exe
-OUTPUT	  := output.txt
 
 # Ordinary Clang options.
 CXX+      := /usr/local/opt/llvm/bin/clang
 CXX       := clang
+CFLAGS    := python3.7-config --cflags
+LDFLAGS   := python3.7-config --ldflags
 OPT       := /usr/local/opt/llvm/bin/opt
 ASMFLAG   := -S
 LLVMFLAG  := -emit-llvm
 CXXFLAGS  := 
-RTFLAGS   := -load ../../build/skeleton/libSkeletonPass.so --skeleton
+RTFLAGS   := -load ../../build/skeleton/libLeechPass.so --leech
 PROFFLAGS := -load ../../build/skeleton/libShackletonPass.so --shackleton
 PASSFLAGS := -select
 
 # Create assembly.
 %.ll: %.c
 	$(CXX) $(CXXFLAGS) $^ $(ASMFLAG) $(LLVMFLAG) -o $@
+
+# Compile library.
+%.o: %.c
+	$(CXX+) `$(CFLAGS)` -c $^ -o $@
 
 # Add runtime library pass on kernel.
 $(KERNEL)-rt.ll: $(KERNEL).ll
@@ -35,8 +42,8 @@ $(KERNEL)-prof.ll: $(KERNEL).ll
 	$(OPT) $(PROFFLAGS) $(ASMFLAG) $^ -o $@
 
 # Link the program.
-$(TARGET): $(RTPASS)
-	$(CXX+) $^ --output $@
+$(TARGET): $(RTPASS) $(HOST) $(RTOBJT)
+	$(CXX+) `$(LDFLAGS)` $^ --output $@
 
 # Link the program.
 $(SIMPLE): $(LLVMS)
@@ -48,11 +55,11 @@ simple: $(SIMPLE)
 	./$(SIMPLE)
 
 # Run profiler.
-.PHONY: profile
-profile: $(TARGET)
+.PHONY: runtime
+runtime: $(TARGET)
 	./$(TARGET)
 
 .PHONY: clean
 clean:
-	rm -f $(LLVMS) $(PASSES) $(TARGET) $(SIMPLE) $(OUTPUT)
+	rm -rf $(LLVMS) $(PASSES) $(TARGET) $(SIMPLE)  __pycache__
 

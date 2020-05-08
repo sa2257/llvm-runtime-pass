@@ -3,10 +3,10 @@
 #include "ssadd.h"
 
 int main() {
-    double a, b, c;
-    a = 5.0;
-    b = 6.0;
+    TYPE a, b, c;
+    a = 5;
+    b = 6;
     ssadd(&a, &b, &c);
-    printf("Output: %f\n", c);
+    printf("Output: %d\n", c);
     return 1;
 }

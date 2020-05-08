@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 //Define compute data type
-#define TYPE double
+#define TYPE int
 
 //Define the input range to operate over
 #define MIN 0.
