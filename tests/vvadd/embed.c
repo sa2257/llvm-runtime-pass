@@ -32,7 +32,7 @@ int call_leech(char *module, char *function, int input1, int input2) {
                 fprintf(stderr, "Cannot convert argument\n");
                 return output;
             }
-            PyTuple_SetItem(pArgs, 1, pValue);
+            PyTuple_SetItem(pArgs, 0, pValue);
             pValue = PyLong_FromLong(input2);
             if (!pValue) {
                 Py_DECREF(pArgs);
@@ -40,7 +40,7 @@ int call_leech(char *module, char *function, int input1, int input2) {
                 fprintf(stderr, "Cannot convert argument\n");
                 return output;
             }
-            PyTuple_SetItem(pArgs, 2, pValue);
+            PyTuple_SetItem(pArgs, 1, pValue);
             /* pArgs is the argument list */
 
 			pRet = PyObject_CallObject(pFunc, pArgs);
@@ -62,7 +62,7 @@ int call_leech(char *module, char *function, int input1, int input2) {
                 PyErr_Print();
             fprintf(stderr, "Cannot find function \"%s\"\n", function);
         }
-        Py_XDECREF(pFunc);
+        Py_DECREF(pFunc);
         Py_DECREF(pModule);
     } else {
         PyErr_Print();
@@ -77,9 +77,10 @@ int call_leech(char *module, char *function, int input1, int input2) {
     return output;
 }
 
-int rtlib(int in1, int in2) {
+int main() {
     char *module = "overload";
     char *function = "leech_2in";
-    output = call_leech(module, function, in1, in2);
+    int output = call_leech(module, function, 5, 3);
+    printf("Output in C: %d\n",output);
     return output;
 }
