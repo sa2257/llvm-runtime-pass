@@ -32,7 +32,8 @@ namespace {
       LeechPass() : ModulePass(ID) {}
       
       virtual bool runOnModule(Module &M); //when there is a Module
-      virtual bool runtimeOnFunction(Function &F); //called by runOnModule
+      virtual bool runtimeForInstruction(Function &F); //called by runOnModule
+      virtual bool runtimeForBasicBlock(Function &F); //called by runOnModule
   };
 }
 
@@ -40,15 +41,16 @@ bool LeechPass::runOnModule(Module &M)
 {
     bool modified = false;
     
-    for (auto& func : M) {
+    for (auto& F : M) {
         if (SwitchOn)
-            modified |= runtimeOnFunction(func);
+            modified |= runtimeForInstruction(F);
+            //modified |= runtimeForBasicBlock(F);
     }
     
     return modified;
 }
 
-bool LeechPass::runtimeOnFunction(Function &F) {
+bool LeechPass::runtimeForBasicBlock(Function &F) {
     bool modified = false;
     /* create the function call from runtime library */
 	LLVMContext& Ctx = F.getContext();
@@ -60,8 +62,49 @@ bool LeechPass::runtimeOnFunction(Function &F) {
     // function call name and argument types have to be known
 	
 	for (auto& B : F) {
-	  errs() << "Basic block: " << B << "!\n";
+            /* Add runtime function selection here */
+	      errs() << "Insert function call after " << B << "!\n";
 	  for (auto& I : B) {
+	    if (auto* op = dyn_cast<BinaryOperator>(&I)) {
+	      /* End of selection algorithm */
+          /* find the place to enter the runtime call */
+          IRBuilder<> builder(op);
+	      builder.SetInsertPoint(&B, ++builder.GetInsertPoint());
+	
+          /* insert runtime call */
+	      errs() << "Insert a call to our function!\n";
+          Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), func, true);
+	      Value* args[] = {op->getOperand(0), i32_select};
+	      Value* ret =  builder.CreateCall(rtFunc, args);
+	
+          /* forward return to users */
+	      for (auto& U : op->uses()) {
+	          User* user = U.getUser();
+	          user->setOperand(U.getOperandNo(), ret);
+	      }
+
+          modified = true;
+        }	      
+	  }
+	}
+
+  	return modified;
+}
+
+bool LeechPass::runtimeForInstruction(Function &F) {
+    bool modified = false;
+    /* create the function call from runtime library */
+	LLVMContext& Ctx = F.getContext();
+	FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
+	  "rtlib", Type::getInt32Ty(Ctx),
+      Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx)
+	);
+    int func = 0;
+    // function call name and argument types have to be known
+	
+	for (auto& B : F) {
+	  for (auto& I : B) {
+            /* Add runtime function selection here */
 	    if (auto* op = dyn_cast<BinaryOperator>(&I)) {
 	      errs() << "Insert function call after " << op->getOpcodeName() << "!\n";
           switch (op->getOpcode()) {
@@ -118,7 +161,7 @@ bool LeechPass::runtimeOnFunction(Function &F) {
               default:
                   break;
           }
-	      
+	      /* End of selection algorithm */
           /* find the place to enter the runtime call */
           IRBuilder<> builder(op);
 	      builder.SetInsertPoint(&B, ++builder.GetInsertPoint());
