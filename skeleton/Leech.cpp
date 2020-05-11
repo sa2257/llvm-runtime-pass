@@ -49,6 +49,7 @@ bool LeechPass::runOnModule(Module &M)
 }
 
 bool LeechPass::runtimeOnFunction(Function &F) {
+    bool modified = false;
     /* create the function call from runtime library */
 	LLVMContext& Ctx = F.getContext();
 	FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
@@ -59,6 +60,7 @@ bool LeechPass::runtimeOnFunction(Function &F) {
     // function call name and argument types have to be known
 	
 	for (auto& B : F) {
+	  errs() << "Basic block: " << B << "!\n";
 	  for (auto& I : B) {
 	    if (auto* op = dyn_cast<BinaryOperator>(&I)) {
 	      errs() << "Insert function call after " << op->getOpcodeName() << "!\n";
@@ -132,13 +134,14 @@ bool LeechPass::runtimeOnFunction(Function &F) {
 	          User* user = U.getUser();
 	          user->setOperand(U.getOperandNo(), ret);
 	      }
+
+          modified = true;
 	      
-          return true;
 	    }
 	  }
 	}
 
-  	return false;
+  	return modified;
 }
 
 
