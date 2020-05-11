@@ -64,57 +64,57 @@ bool LeechPass::runtimeOnFunction(Function &F) {
 	      errs() << "Insert function call after " << op->getOpcodeName() << "!\n";
           switch (op->getOpcode()) {
               //case Instruction::FNeg: // fp negation
-              //    func = 3; continue;
+              //    func = 3; break;
               case Instruction::Add: // addition
-                  func = 2; continue;
+                  func = 2; break;
               case Instruction::FAdd: // fp addition
-                  func = 5; continue;
+                  func = 5; break;
               case Instruction::Sub: // subtraction
-                  func = 2; continue;
+                  func = 2; break;
               case Instruction::FSub: // fp subtraction
-                  func = 5; continue;
+                  func = 5; break;
               case Instruction::Mul: // multiplication
-                  func = 2; continue;
+                  func = 2; break;
               case Instruction::FMul: // fp multiplication
-                  func = 5; continue;
+                  func = 5; break;
               case Instruction::UDiv: // division unsigned
               case Instruction::SDiv: // division signed
-                  func = 2; continue;
+                  func = 2; break;
               case Instruction::FDiv: // fp division
-                  func = 5; continue;
+                  func = 5; break;
               case Instruction::URem: // remainder unsigned
               case Instruction::SRem: // remainder signed
-                  func = 2; continue;
+                  func = 2; break;
               case Instruction::FRem: // fp remainder
-                  func = 5; continue;
+                  func = 5; break;
               case Instruction::And: // and
-                  func = 1; continue;
+                  func = 1; break;
               case Instruction::Or: // or
-                  func = 1; continue;
+                  func = 1; break;
               case Instruction::Xor: // xor
-                  func = 1; continue;
+                  func = 1; break;
               //case Instruction::Load: // load
-              //    func = 5; continue;
+              //    func = 5; break;
               //case Instruction::Store: // store
-              //    func = 5; continue;
+              //    func = 5; break;
               //case Instruction::Trunc: // truncate
-              //    func = 5; continue;
+              //    func = 5; break;
               //case Instruction::ZExt: // zero-extend
-              //    func = 5; continue;
+              //    func = 5; break;
               //case Instruction::SExt: // sign-extend
-              //    func = 5; continue;
+              //    func = 5; break;
               //case Instruction::FPTrunc: // fp truncate
-              //    func = 5; continue;
+              //    func = 5; break;
               //case Instruction::FPExt: // fp extend
-              //    func = 5; continue;
+              //    func = 5; break;
               //case Instruction::Shl: // shift left
-              //    func = 5; continue;
+              //    func = 5; break;
               //case Instruction::LShr: // logic shift right
-              //    func = 5; continue;
+              //    func = 5; break;
               //case Instruction::AShr: // arith shift right
-              //    func = 5; continue;
+              //    func = 5; break;
               default:
-                  continue;
+                  break;
           }
 	      
           /* find the place to enter the runtime call */
