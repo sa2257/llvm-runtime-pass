@@ -77,11 +77,12 @@ int call_leech(char *module, char *function, int input1, int input2) {
     return output;
 }
 
-int rtlib(int in1, int in2) {
+int rtlib(int in1, int in2, int ins) {
     char *module = "overload";
     char *function = "leech_2in";
     int input1 = in1 % 5 + 1;
     int input2 = in2 % 5 + 1;
+    fprintf(stdout, "Selected version is: %d", ins);
     int output = call_leech(module, function, input1, input2);
     //printf("Output in C: %d\n",output);
     return output;

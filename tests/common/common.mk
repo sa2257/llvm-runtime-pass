@@ -3,8 +3,8 @@ LLVMS     := $(SOURCES:%.c=%.ll)
 HOST      := $(HOST_SRCS:%.c=%.ll)
 RTPASS    := $(HW_SRCS:%.c=%-rt.ll)
 RTOBJT    := $(RT_SRCS:%.c=%.o)
-PROFPASS  := $(SOURCES:%.c=%-prof.ll)
-PASSES    := $(PROFPASS)  $(RTPASS) $(RTOBJT)
+PROFPASS  := $(HW_SRCS:%.c=%-prof.ll)
+PASSES    := $(PROFPASS) $(RTPASS) $(RTOBJT)
 TARGET    := $(KERNEL)
 SIMPLE    := exe
 
@@ -35,14 +35,10 @@ $(KERNEL)-rt.ll: $(KERNEL).ll
 
 # Run profile pass on kernel.
 $(KERNEL)-prof.ll: $(KERNEL).ll
-	$(OPT) $(PROFFLAGS) $(PASSFLAGS) $(ASMFLAG) $^ -o $@
-
-# Run profile pass on main.
-%-prof.ll: %.ll
 	$(OPT) $(PROFFLAGS) $(ASMFLAG) $^ -o $@
 
 # Link the program.
-$(TARGET): $(RTPASS) $(HOST) $(RTOBJT)
+$(TARGET): $(PROFPASS) $(HOST) $(RTOBJT)
 	$(CXX+) `$(LDFLAGS)` $^ --output $@
 
 # Link the program.
