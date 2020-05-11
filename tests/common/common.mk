@@ -3,8 +3,7 @@ LLVMS     := $(SOURCES:%.c=%.ll)
 HOST      := $(HOST_SRCS:%.c=%.ll)
 RTPASS    := $(HW_SRCS:%.c=%-rt.ll)
 RTOBJT    := $(RT_SRCS:%.c=%.o)
-PROFPASS  := $(HW_SRCS:%.c=%-prof.ll)
-PASSES    := $(PROFPASS) $(RTPASS) $(RTOBJT)
+PASSES    := $(RTPASS) $(RTOBJT)
 TARGET    := $(KERNEL)
 SIMPLE    := exe
 
@@ -18,7 +17,6 @@ ASMFLAG   := -S
 LLVMFLAG  := -emit-llvm
 CXXFLAGS  := 
 RTFLAGS   := -load ../../build/skeleton/libLeechPass.so --leech
-PROFFLAGS := -load ../../build/skeleton/libShackletonPass.so --shackleton
 PASSFLAGS := -select
 
 # Create assembly.
@@ -31,14 +29,10 @@ PASSFLAGS := -select
 
 # Add runtime library pass on kernel.
 $(KERNEL)-rt.ll: $(KERNEL).ll
-	$(OPT) $(RTFLAGS) $(ASMFLAG) $^ -o $@
-
-# Run profile pass on kernel.
-$(KERNEL)-prof.ll: $(KERNEL).ll
-	$(OPT) $(PROFFLAGS) $(ASMFLAG) $^ -o $@
+	$(OPT) $(RTFLAGS) $(PASSFLAGS) $(ASMFLAG) $^ -o $@
 
 # Link the program.
-$(TARGET): $(PROFPASS) $(HOST) $(RTOBJT)
+$(TARGET): $(RTPASS) $(HOST) $(RTOBJT)
 	$(CXX+) `$(LDFLAGS)` $^ --output $@
 
 # Link the program.
