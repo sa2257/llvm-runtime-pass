@@ -4,9 +4,9 @@
 
 int main() {
     TYPE a, b, c;
-    a = 5;
-    b = 6;
+    a = 5.0;
+    b = 6.0;
     ssadd(&a, &b, &c);
-    printf("Output: %d\n", c);
+    printf("Output: %f\n", c);
     return 1;
 }

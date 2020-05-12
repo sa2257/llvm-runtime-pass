@@ -15,16 +15,21 @@ dict_2in = {
 }
 
 def leech_1in(in1):
-    output = dict_1in[in1] * 50
+    if type(in1) == float:
+        output = in1 + 5.00
+    else:
+        output = dict_1in[in1] * 50
     return output
 
 def leech_2in(in1, in2):
-    output = dict_2in[in1][in2] * 50
-    return output
-
+    if type(in1) == float:
+        output = in1 + in2 + 5.00
+    else:
+        output = dict_2in[in1][in2] * 50
     return output
 
 if __name__ == "__main__":
     # execute only if run as a script
-    output = leech_2in(5,4);
+    # output = leech_2in(5,4);
+    output = leech_2in(5.00,4.00);
     print('Output: {}'.format(output))

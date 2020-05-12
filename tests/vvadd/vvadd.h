@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 //Define compute data type
-#define TYPE int
+#define TYPE double
 
 //Specify vector length
 #define N 4096

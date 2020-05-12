@@ -73,10 +73,36 @@ int parse_int_array(char *s, TYPE *arr, int n) {
   return 0; 
 }
 
+int parse_double_array(char *s, TYPE *arr, int n) { 
+  char *line, *endptr; 
+  int i=0; 
+  TYPE v; 
+  
+  assert(s!=NULL && "Invalid input string"); 
+  
+  line = strtok(s,"\n"); 
+  while( line!=NULL && i<n ) { 
+    endptr = line; 
+    v = (TYPE)(strtod(line, &endptr)); 
+    if( (*endptr)!=(char)0 ) { 
+      fprintf(stderr, "Invalid input: line %d of section\n", i); 
+    } 
+    arr[i] = v; 
+    i++; 
+    line[strlen(line)] = '\n'; /* Undo the strtok replacement.*/ 
+    line = strtok(NULL,"\n"); 
+  } 
+  if(line!=NULL) { /* stopped because we read all the things */ 
+    line[strlen(line)] = '\n'; /* Undo the strtok replacement.*/ 
+  } 
+  
+  return 0; 
+}
+
 void run_benchmark() {
     struct bench_args_t args;
     char const *in_file;
-    in_file = "input.data";
+    in_file = "input_double.data";
 
     int in_fd;
     in_fd = open( in_file, O_RDONLY );
@@ -86,31 +112,19 @@ void run_benchmark() {
     p = readfile(in_fd);
     
     s = find_section_start(p,1);
-    parse_int_array(s, args.m1, N);
+    parse_double_array(s, args.m1, N);
     
     s = find_section_start(p,2);
-    parse_int_array(s, args.m2, N);
+    parse_double_array(s, args.m2, N);
     free(p);
 
     for (int i = 0; i < row_size; i++) {
         for (int j = 0; j < col_size; j++) {
-//            printf("%f- ",args.m1[i * row_size + j]);
-//            printf("%f, ",args.m2[i * row_size + j]);
-//            args.m1[i * row_size + j] = 1 + i * row_size + j;
-//            args.m2[i * row_size + j] = rand() / (N);
             args.add[i * row_size + j] = 0;
         }
-//        printf("\n");
     }
-//    printf("\n");
     vvadd( args.m1, args.m2, args.add );
-//    for (int i = 0; i < row_size; i++) {
-//        for (int j = 0; j < col_size; j++) {
-//              printf("%f-", args.add[i * row_size + j]);
-//        }
-//        printf("\n");
-//    }
-    printf("One example output is %d \n", args.add[N-1]);
+    printf("One example output is %f \n", args.add[N-1]);
 }
 
 int main () {
