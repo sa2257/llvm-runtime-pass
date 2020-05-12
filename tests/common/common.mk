@@ -15,7 +15,7 @@ LDFLAGS   := python3.7-config --ldflags
 OPT       := /usr/local/opt/llvm/bin/opt
 ASMFLAG   := -S
 LLVMFLAG  := -emit-llvm
-CXXFLAGS  := 
+CXXFLAGS  :=  
 RTFLAGS   := -load ../../build/skeleton/libLeechPass.so --leech
 PASSFLAGS := -select
 

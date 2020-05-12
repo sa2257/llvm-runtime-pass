@@ -34,7 +34,7 @@ namespace {
       virtual bool runOnModule(Module &M); //when there is a Module
       virtual bool runtimeForInstruction(Function &F); //called by runOnModule
       virtual bool runtimeForBasicBlock(Function &F); //called by runOnModule
-      virtual bool runtimeForFunction(Function &F, Module &M); //called by runOnModule
+      virtual bool runtimeForFunction(Function &F); //called by runOnModule
   };
 }
 
@@ -46,15 +46,16 @@ bool LeechPass::runOnModule(Module &M)
         if (SwitchOn)
             //modified |= runtimeForInstruction(F);
             //modified |= runtimeForBasicBlock(F);
-            modified |= runtimeForFunction(F, M);
+            modified |= runtimeForFunction(F);
     }
     
     return modified;
 }
 
-bool LeechPass::runtimeForFunction(Function &F, Module &M) {
+bool LeechPass::runtimeForFunction(Function &F) {
     bool modified = false;
     
+    /* Add conditional to preventive recursive replacement */
     if (F.getName() == "ssadd") {
         /* Remove existing basic blocks */
         BasicBlock* workList = NULL; // To collect replaced instructions within iterator
@@ -69,7 +70,6 @@ bool LeechPass::runtimeForFunction(Function &F, Module &M) {
         int i = 0;
         Value* args[3];
         for(auto arg = F.arg_begin(); arg != F.arg_end(); ++arg) {
-                errs() << "Inside func: " << F.getName() << " : " << *arg << "\n";
                 args[i] = arg;
                 i++;
         }
@@ -81,7 +81,7 @@ bool LeechPass::runtimeForFunction(Function &F, Module &M) {
         // Create function call
         IRBuilder<> builder(pb);
 
-        errs() << "Insert runtime function\n";
+        errs() << "Insert runtime function in " << F.getName() << "\n";
 	    FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
 	      "rtlib_double", Type::getDoubleTy(Ctx),
           Type::getDoublePtrTy(Ctx), Type::getDoublePtrTy(Ctx), Type::getInt32Ty(Ctx)
@@ -102,60 +102,71 @@ bool LeechPass::runtimeForFunction(Function &F, Module &M) {
 
 bool LeechPass::runtimeForBasicBlock(Function &F) {
     bool modified = false;
+    
+    /* Select a basic block */
     BasicBlock* workList = NULL; // To collect replaced instructions within iterator
-	
 	for (auto& B : F) {
-        workList = &B;
+	  for (auto& I : B) {
+	    if (auto* op = dyn_cast<BinaryOperator>(&I)) {
+            if(op->getOpcode() == Instruction::FAdd)
+                workList = &B;
+        }
+      }
     }
+    
+    BasicBlock* predBB = workList->getSinglePredecessor();
+    BasicBlock* succBB = workList->getSingleSuccessor();
 
-	if (workList != NULL)
+	if (workList != NULL) {
         workList->eraseFromParent();
     
-    /* create the function call from runtime library */
-	LLVMContext& Ctx = F.getContext();
-	FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
-	  "rtlib_double", Type::getDoubleTy(Ctx),
-      Type::getDoubleTy(Ctx), Type::getDoubleTy(Ctx), Type::getInt32Ty(Ctx)
-	);
-    // function call name and argument types have to be known
-    
-    for(auto arg = F.arg_begin(); arg != F.arg_end(); ++arg) {
-          if(auto* ci = dyn_cast<ConstantFP>(arg))
-                  errs() << ci->isNegative() << "\n";
-            errs() << *arg << "\n";
+        // Not going to work for array args, need to find the allocas
+        //int i = 0;
+        //Value* fargs[3];
+        //for(auto arg = F.arg_begin(); arg != F.arg_end(); ++arg) {
+        //        fargs[i] = arg;
+        //        i++;
+        //}
+        
+        /* Create new basic block */ 
+	    LLVMContext& Ctx = F.getContext();
+        BasicBlock *pb = BasicBlock::Create(Ctx, "simple", &F, succBB);
+
+        // Create function call
+        IRBuilder<> builder(pb);
+
+        errs() << "Insert runtime function in " << *pb << "\n";
+	    //FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
+	    //  "rtlib_int", Type::getInt32Ty(Ctx),
+        //  Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx)
+	    //);
+        FunctionCallee logFunc = F.getParent()->getOrInsertFunction(
+                  "logop", Type::getVoidTy(Ctx), Type::getInt32Ty(Ctx)
+                );
+        // function call name and argument types have to be known
+        
+        //Constant *i32_in1 = ConstantInt::get(Type::getInt32Ty(Ctx), 5, true);
+        //Constant *i32_in2 = ConstantInt::get(Type::getInt32Ty(Ctx), 6, true);
+        //Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), 2, true);
+        //Value* args[] = {i32_in1, i32_in2, i32_select};
+	    //Value* ret =  builder.CreateCall(rtFunc, args);
+
+        //Value* args[] = {i32_select};
+        //builder.CreateCall(logFunc, args);
+  	    
+        // Create a jump
+        Instruction *brInst = BranchInst::Create(succBB, pb);
+
+        // Update entry
+        Instruction *brPred = predBB->getTerminator();
+        brPred->setSuccessor(0, pb);
+
+        modified = true;
+    errs() << *predBB << "\n";
+    errs() << *succBB << "\n";
+    errs() << *pb << "\n";
     }
-
 	
-    //IRBuilder<> builder(op);
-    //builder.SetInsertPoint(&B, ++builder.GetInsertPoint());
-	//
-	//for (auto& B : F) {
-    //        /* Add runtime function selection here */
-	//      errs() << "Insert function call after " << B << "!\n";
-	//  for (auto& I : B) {
-	//    if (auto* op = dyn_cast<BinaryOperator>(&I)) {
-	//      /* End of selection algorithm */
-    //      /* find the place to enter the runtime call */
-    //      IRBuilder<> builder(op);
-	//      builder.SetInsertPoint(&B, ++builder.GetInsertPoint());
-	//
-    //      /* insert runtime call */
-	//      errs() << "Insert a call to our function!\n";
-    //      Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), func, true);
-	//      Value* args[] = {op->getOperand(0), i32_select};
-	//      Value* ret =  builder.CreateCall(rtFunc, args);
-	//
-    //      /* forward return to users */
-	//      for (auto& U : op->uses()) {
-	//          User* user = U.getUser();
-	//          user->setOperand(U.getOperandNo(), ret);
-	//      }
-
-    //      modified = true;
-    //    }	      
-	//  }
-	//}
-
   	return modified;
 }
 
@@ -200,26 +211,6 @@ bool LeechPass::runtimeForInstruction(Function &F) {
                   func = 1; break;
               case Instruction::Xor: // xor
                   func = 1; break;
-              //case Instruction::Load: // load
-              //    func = 5; break;
-              //case Instruction::Store: // store
-              //    func = 5; break;
-              //case Instruction::Trunc: // truncate
-              //    func = 5; break;
-              //case Instruction::ZExt: // zero-extend
-              //    func = 5; break;
-              //case Instruction::SExt: // sign-extend
-              //    func = 5; break;
-              //case Instruction::FPTrunc: // fp truncate
-              //    func = 5; break;
-              //case Instruction::FPExt: // fp extend
-              //    func = 5; break;
-              //case Instruction::Shl: // shift left
-              //    func = 5; break;
-              //case Instruction::LShr: // logic shift right
-              //    func = 5; break;
-              //case Instruction::AShr: // arith shift right
-              //    func = 5; break;
               default:
                   break;
           }

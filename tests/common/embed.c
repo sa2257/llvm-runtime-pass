@@ -172,3 +172,7 @@ double rtlib_double(double *in1, double *in2, int ins) {
     printf("Output in C: %f\n",output);
     return output;
 }
+
+void log_val(double i) {
+      printf("Log: %f\n", i);
+}
