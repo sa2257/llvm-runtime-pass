@@ -162,11 +162,11 @@ int rtlib_int(int in1, int in2, int ins) {
     return output;
 }
 
-double rtlib_double(double in1, double in2, int ins) {
+double rtlib_double(double *in1, double *in2, int ins) {
     char *module = "overload";
     char *function = "leech_2in";
-    double input1 = in1;
-    double input2 = in2;
+    double input1 = *in1;
+    double input2 = *in2;
     fprintf(stdout, "Selected version is: %d\n", ins);
     double output = call_leech_double(module, function, input1, input2);
     printf("Output in C: %f\n",output);

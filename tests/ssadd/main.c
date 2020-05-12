@@ -6,7 +6,7 @@ int main() {
     TYPE a, b, c;
     a = 5.0;
     b = 6.0;
-    ssadd(&a, &b, &c);
-    printf("Output: %f\n", c);
+    TYPE d = ssadd(&a, &b, &c);
+    printf("Output: %f\n", d);
     return 1;
 }

@@ -34,6 +34,7 @@ namespace {
       virtual bool runOnModule(Module &M); //when there is a Module
       virtual bool runtimeForInstruction(Function &F); //called by runOnModule
       virtual bool runtimeForBasicBlock(Function &F); //called by runOnModule
+      virtual bool runtimeForFunction(Function &F, Module &M); //called by runOnModule
   };
 }
 
@@ -43,54 +44,117 @@ bool LeechPass::runOnModule(Module &M)
     
     for (auto& F : M) {
         if (SwitchOn)
-            modified |= runtimeForInstruction(F);
+            //modified |= runtimeForInstruction(F);
             //modified |= runtimeForBasicBlock(F);
+            modified |= runtimeForFunction(F, M);
     }
     
     return modified;
 }
 
+bool LeechPass::runtimeForFunction(Function &F, Module &M) {
+    bool modified = false;
+    
+    if (F.getName() == "ssadd") {
+        /* Remove existing basic blocks */
+        BasicBlock* workList = NULL; // To collect replaced instructions within iterator
+	    
+	    for (auto& B : F) {
+            workList = &B;
+        }
+
+        if (workList != NULL)
+            workList->eraseFromParent();
+        
+        int i = 0;
+        Value* args[3];
+        for(auto arg = F.arg_begin(); arg != F.arg_end(); ++arg) {
+                errs() << "Inside func: " << F.getName() << " : " << *arg << "\n";
+                args[i] = arg;
+                i++;
+        }
+        
+        /* Create new basic block */ 
+	    LLVMContext& Ctx = F.getContext();
+        BasicBlock *pb = BasicBlock::Create(Ctx, "simple", &F);
+
+        // Create function call
+        IRBuilder<> builder(pb);
+
+        errs() << "Insert runtime function\n";
+	    FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
+	      "rtlib_double", Type::getDoubleTy(Ctx),
+          Type::getDoublePtrTy(Ctx), Type::getDoublePtrTy(Ctx), Type::getInt32Ty(Ctx)
+	    );
+        // function call name and argument types have to be known
+        
+        Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), 2, true);
+        args[2] = i32_select;
+	    Value* ret =  builder.CreateCall(rtFunc, args);
+  	    
+        // Create return
+        Instruction *retInst = ReturnInst::Create(Ctx, ret, pb);
+        modified = true;
+    }
+
+    return modified;
+}
+
 bool LeechPass::runtimeForBasicBlock(Function &F) {
     bool modified = false;
+    BasicBlock* workList = NULL; // To collect replaced instructions within iterator
+	
+	for (auto& B : F) {
+        workList = &B;
+    }
+
+	if (workList != NULL)
+        workList->eraseFromParent();
+    
     /* create the function call from runtime library */
 	LLVMContext& Ctx = F.getContext();
-	//FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
-	//  "rtlib_int", Type::getInt32Ty(Ctx),
-    //  Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx)
-	//);
 	FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
 	  "rtlib_double", Type::getDoubleTy(Ctx),
       Type::getDoubleTy(Ctx), Type::getDoubleTy(Ctx), Type::getInt32Ty(Ctx)
 	);
-    int func = 0;
     // function call name and argument types have to be known
-	
-	for (auto& B : F) {
-            /* Add runtime function selection here */
-	      errs() << "Insert function call after " << B << "!\n";
-	  for (auto& I : B) {
-	    if (auto* op = dyn_cast<BinaryOperator>(&I)) {
-	      /* End of selection algorithm */
-          /* find the place to enter the runtime call */
-          IRBuilder<> builder(op);
-	      builder.SetInsertPoint(&B, ++builder.GetInsertPoint());
-	
-          /* insert runtime call */
-	      errs() << "Insert a call to our function!\n";
-          Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), func, true);
-	      Value* args[] = {op->getOperand(0), i32_select};
-	      Value* ret =  builder.CreateCall(rtFunc, args);
-	
-          /* forward return to users */
-	      for (auto& U : op->uses()) {
-	          User* user = U.getUser();
-	          user->setOperand(U.getOperandNo(), ret);
-	      }
+    
+    for(auto arg = F.arg_begin(); arg != F.arg_end(); ++arg) {
+          if(auto* ci = dyn_cast<ConstantFP>(arg))
+                  errs() << ci->isNegative() << "\n";
+            errs() << *arg << "\n";
+    }
 
-          modified = true;
-        }	      
-	  }
-	}
+	
+    //IRBuilder<> builder(op);
+    //builder.SetInsertPoint(&B, ++builder.GetInsertPoint());
+	//
+	//for (auto& B : F) {
+    //        /* Add runtime function selection here */
+	//      errs() << "Insert function call after " << B << "!\n";
+	//  for (auto& I : B) {
+	//    if (auto* op = dyn_cast<BinaryOperator>(&I)) {
+	//      /* End of selection algorithm */
+    //      /* find the place to enter the runtime call */
+    //      IRBuilder<> builder(op);
+	//      builder.SetInsertPoint(&B, ++builder.GetInsertPoint());
+	//
+    //      /* insert runtime call */
+	//      errs() << "Insert a call to our function!\n";
+    //      Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), func, true);
+	//      Value* args[] = {op->getOperand(0), i32_select};
+	//      Value* ret =  builder.CreateCall(rtFunc, args);
+	//
+    //      /* forward return to users */
+	//      for (auto& U : op->uses()) {
+	//          User* user = U.getUser();
+	//          user->setOperand(U.getOperandNo(), ret);
+	//      }
+
+    //      modified = true;
+    //    }	      
+	//  }
+	//}
 
   	return modified;
 }
