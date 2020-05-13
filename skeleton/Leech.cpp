@@ -45,8 +45,8 @@ bool LeechPass::runOnModule(Module &M)
     for (auto& F : M) {
         if (SwitchOn)
             //modified |= runtimeForInstruction(F);
-            //modified |= runtimeForBasicBlock(F);
-            modified |= runtimeForFunction(F);
+            modified |= runtimeForBasicBlock(F);
+            //modified |= runtimeForFunction(F);
     }
     
     return modified;
@@ -104,6 +104,7 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
     bool modified = false;
     
     /* Select a basic block */
+    if (F.getName() == "vvadd") {
     BasicBlock* workList = NULL; // To collect replaced instructions within iterator
 	for (auto& B : F) {
 	  for (auto& I : B) {
@@ -119,49 +120,43 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
 
 	if (workList != NULL) {
         workList->eraseFromParent();
+    }
     
-        // Not going to work for array args, need to find the allocas
-        //int i = 0;
-        //Value* fargs[3];
-        //for(auto arg = F.arg_begin(); arg != F.arg_end(); ++arg) {
-        //        fargs[i] = arg;
-        //        i++;
-        //}
+    /* Create new basic block */ 
+	LLVMContext& Ctx = F.getContext();
+    //BasicBlock *pb = BasicBlock::Create(Ctx, "simple", &F, succBB);
+    BasicBlock *pb = BasicBlock::Create(Ctx, "simple", &F);
+
+    // Create function call
+    IRBuilder<> builder(pb);
+
+    errs() << "Insert runtime function in " << F.getName() << "\n";
+	FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
+	  "rtlib_int", Type::getInt32Ty(Ctx),
+      Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx)
+	);
+    FunctionCallee logFunc = F.getParent()->getOrInsertFunction(
+              "log_val", Type::getVoidTy(Ctx), Type::getInt32Ty(Ctx)
+            );
+    // function call name and argument types have to be known
+    
+    Constant *i32_in1 = ConstantInt::get(Type::getInt32Ty(Ctx), 5, true);
+    Constant *i32_in2 = ConstantInt::get(Type::getInt32Ty(Ctx), 6, true);
+    Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), 2, true);
+    Value* args[] = {i32_in1, i32_in2, i32_select};
+	Value* ret =  builder.CreateCall(rtFunc, args);
+
+    Value* argsl[] = {ret};
+    builder.CreateCall(logFunc, argsl);
         
-        /* Create new basic block */ 
-	    LLVMContext& Ctx = F.getContext();
-        BasicBlock *pb = BasicBlock::Create(Ctx, "simple", &F, succBB);
+    // Create a jump
+    Instruction *brInst = BranchInst::Create(succBB, pb);
 
-        // Create function call
-        IRBuilder<> builder(pb);
+    // Update entry
+    Instruction *brPred = predBB->getTerminator();
+    brPred->setSuccessor(0, pb);
 
-        errs() << "Insert runtime function in " << *pb << "\n";
-	    //FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
-	    //  "rtlib_int", Type::getInt32Ty(Ctx),
-        //  Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx)
-	    //);
-        FunctionCallee logFunc = F.getParent()->getOrInsertFunction(
-                  "logop", Type::getVoidTy(Ctx), Type::getInt32Ty(Ctx)
-                );
-        // function call name and argument types have to be known
-        
-        //Constant *i32_in1 = ConstantInt::get(Type::getInt32Ty(Ctx), 5, true);
-        //Constant *i32_in2 = ConstantInt::get(Type::getInt32Ty(Ctx), 6, true);
-        //Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), 2, true);
-        //Value* args[] = {i32_in1, i32_in2, i32_select};
-	    //Value* ret =  builder.CreateCall(rtFunc, args);
-
-        //Value* args[] = {i32_select};
-        //builder.CreateCall(logFunc, args);
-  	    
-        // Create a jump
-        Instruction *brInst = BranchInst::Create(succBB, pb);
-
-        // Update entry
-        Instruction *brPred = predBB->getTerminator();
-        brPred->setSuccessor(0, pb);
-
-        modified = true;
+    modified = true;
     errs() << *predBB << "\n";
     errs() << *succBB << "\n";
     errs() << *pb << "\n";
