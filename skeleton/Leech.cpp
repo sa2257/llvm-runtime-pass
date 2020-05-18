@@ -44,8 +44,8 @@ bool LeechPass::runOnModule(Module &M)
     
     for (auto& F : M) {
         if (SwitchOn)
-            //modified |= runtimeForInstruction(F);
-            modified |= runtimeForBasicBlock(F);
+            modified |= runtimeForInstruction(F);
+            //modified |= runtimeForBasicBlock(F);
             //modified |= runtimeForFunction(F);
     }
     
@@ -175,35 +175,35 @@ bool LeechPass::runtimeForInstruction(Function &F) {
           int func = 0;
           switch (op->getOpcode()) {
               //case Instruction::FNeg: // fp negation
-              //    func = 3; break;
+              //    func = 7; break;
               case Instruction::Add: // addition
                   func = 2; break;
               case Instruction::FAdd: // fp addition
-                  func = 5; break;
+                  func = 8; break;
               case Instruction::Sub: // subtraction
-                  func = 2; break;
+                  func = 3; break;
               case Instruction::FSub: // fp subtraction
-                  func = 5; break;
+                  func = 9; break;
               case Instruction::Mul: // multiplication
-                  func = 2; break;
+                  func = 4; break;
               case Instruction::FMul: // fp multiplication
-                  func = 5; break;
+                  func = 10; break;
               case Instruction::UDiv: // division unsigned
               case Instruction::SDiv: // division signed
-                  func = 2; break;
-              case Instruction::FDiv: // fp division
                   func = 5; break;
+              case Instruction::FDiv: // fp division
+                  func = 11; break;
               case Instruction::URem: // remainder unsigned
               case Instruction::SRem: // remainder signed
-                  func = 2; break;
+                  func = 6; break;
               case Instruction::FRem: // fp remainder
-                  func = 5; break;
+                  func = 12; break;
               case Instruction::And: // and
-                  func = 1; break;
+                  func = 13; break;
               case Instruction::Or: // or
-                  func = 1; break;
+                  func = 14; break;
               case Instruction::Xor: // xor
-                  func = 1; break;
+                  func = 15; break;
               default:
                   break;
           }
@@ -215,21 +215,21 @@ bool LeechPass::runtimeForInstruction(Function &F) {
           /* create the function call from runtime library */
 	      LLVMContext& Ctx = F.getContext();
 	      FunctionCallee rtFunc;
-          if (func < 4) {
+          if (func < 6) {
 	          rtFunc = F.getParent()->getOrInsertFunction(
 	              "rtlib_int", Type::getInt32Ty(Ctx),
                   Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx)
 	              );
           } else {
 	          rtFunc = F.getParent()->getOrInsertFunction(
-	              "rtlib_double", Type::getDoubleTy(Ctx),
+	              "rtlib_sim", Type::getDoubleTy(Ctx),
                   Type::getDoubleTy(Ctx), Type::getDoubleTy(Ctx), Type::getInt32Ty(Ctx)
 	              );
           }
           // function call name and argument types have to be known
     
           /* insert runtime call */
-          if(func > 3) {
+          if(func > 6) {
 	      errs() << "Insert a call to our function!\n";
           Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), func, true);
 	      Value* args[] = {op->getOperand(0), op->getOperand(1), i32_select};

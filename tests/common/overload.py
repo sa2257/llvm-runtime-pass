@@ -1,3 +1,9 @@
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir) 
+from Q import processingElement
+
 dict_1in = {
         1: 5, 
         2: 4,
@@ -28,8 +34,14 @@ def leech_2in(in1, in2):
         output = dict_2in[in1][in2] * 50
     return output
 
+def call_pe(in1, in2, op):
+    PE = processingElement('PE', op, False, 1, 4, 1, False, False, False)
+    compute, tempTicks = PE.operate([in1, in2], ticks)
+    return compute[0] 
+
 if __name__ == "__main__":
     # execute only if run as a script
     # output = leech_2in(5,4);
-    output = leech_2in(5.00,4.00);
+    # output = leech_2in(5.00,4.00);
+    output = call_pe(5.00, 4.00, 'add');
     print('Output: {}'.format(output))
