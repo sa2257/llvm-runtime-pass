@@ -44,8 +44,8 @@ bool LeechPass::runOnModule(Module &M)
     
     for (auto& F : M) {
         if (SwitchOn)
-            modified |= runtimeForInstruction(F);
-            //modified |= runtimeForBasicBlock(F);
+            //modified |= runtimeForInstruction(F);
+            modified |= runtimeForBasicBlock(F);
             //modified |= runtimeForFunction(F);
     }
     

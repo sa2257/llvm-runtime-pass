@@ -240,7 +240,7 @@ int rtlib_int(int in1, int in2, int ins) {
     char *function = "leech_2in";
     int input1 = in1 % 5 + 1;
     int input2 = in2 % 5 + 1;
-    //fprintf(stdout, "Selected version is: %d\n", ins);
+    fprintf(stdout, "Selected version is: %d\n", ins);
     int output = call_leech_int(module, function, input1, input2);
     //printf("Output in C: %d\n",output);
     return output;
@@ -251,9 +251,9 @@ double rtlib_double(double *in1, double *in2, int ins) {
     char *function = "leech_2in";
     double input1 = *in1;
     double input2 = *in2;
-    //fprintf(stdout, "Selected version is: %d\n", ins);
+    fprintf(stdout, "Selected version is: %d\n", ins);
     double output = call_leech_double(module, function, input1, input2);
-    //printf("Output in C: %f\n",output);
+    printf("Output in C: %f\n",output);
     return output;
 }
 
@@ -266,9 +266,9 @@ double rtlib_sim(double in1, double in2, int ins) {
     char *function = "call_pe";
     double input1 = in1;
     double input2 = in2;
-    //fprintf(stdout, "Selected version is: %d\n", ins);
+    fprintf(stdout, "Selected version is: %d\n", ins);
     double output = call_ins_sim(module, function, input1, input2, ins);
-    //printf("Output in C: %f\n",output);
+    printf("Output in C: %f\n",output);
     return output;
 }
 
