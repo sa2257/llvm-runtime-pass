@@ -104,7 +104,7 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
     bool modified = false;
     
     // if function not selected, llvm goes crazy
-    if (F.getName() == "vvadd") {
+    if (F.getName() == "diamond") {
         /* Select a basic block */
         BasicBlock* workList = NULL; // To collect replaced instructions within iterator
 	    for (auto& B : F) {
@@ -115,7 +115,9 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
             }
           }
         }
+        /* Done selecting a basic block */
         
+        // Enter and exit to the basic block- single for now
         BasicBlock* predBB = workList->getSinglePredecessor();
         BasicBlock* succBB = workList->getSingleSuccessor();
 
@@ -131,7 +133,8 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
         // Create function call
         IRBuilder<> builder(pb);
 
-        errs() << "Insert runtime function in " << F.getName() << "\n";
+        /* Enter instructions to the new basic block */
+        errs() << "Insert runtime basic block as " << pb->getName() << "\n";
 	    FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
 	      "rtlib_int", Type::getInt32Ty(Ctx),
           Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx)
@@ -149,6 +152,7 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
 
         Value* argsl[] = {ret};
         builder.CreateCall(logFunc, argsl);
+        /* Done entering new instructions */
             
         // Create a jump
         Instruction *brInst = BranchInst::Create(succBB, pb);
