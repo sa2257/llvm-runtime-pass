@@ -57,10 +57,19 @@ def call_pe(in1, in2, op):
     compute, tempTicks = PE.operate([in1, in2], ticks)
     return compute 
 
+def call_func(in1, in2, out):
+    input1 = in1[0]
+    input2 = in2[0]
+    output = out[0]
+    for i, (i1, i2) in enumerate(zip(input1, input2)):
+        output[i] = i1 + i2
+    return output
+
 if __name__ == "__main__":
     # execute only if run as a script
     # output = leech_2in(5,4);
     # output = leech_2in(5.00,4.00);
-    output = call_pe(5.00, 4.00, 8);
+    #output = call_pe(5.00, 4.00, 8);
+    output = call_func(([5.32, 4.35],), ([3.65, 7.74],),([0.00, 0.00],));
     print('Output: {}'.format(output))
 
