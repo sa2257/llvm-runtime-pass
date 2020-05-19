@@ -12,7 +12,7 @@
 //Set number of iterations to execute
 #define MAX_ITERATION 1
 
-TYPE ssadd(TYPE *m1, TYPE *m2, TYPE *add);
+void ssadd(TYPE *m1, TYPE *m2, TYPE *add);
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
 

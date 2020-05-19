@@ -17,6 +17,7 @@
 
 #include <string.h>
 #include <vector>
+#include <queue>
 
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
@@ -45,8 +46,8 @@ bool LeechPass::runOnModule(Module &M)
     for (auto& F : M) {
         if (SwitchOn)
             //modified |= runtimeForInstruction(F);
-            modified |= runtimeForBasicBlock(F);
-            //modified |= runtimeForFunction(F);
+            //modified |= runtimeForBasicBlock(F);
+            modified |= runtimeForFunction(F);
     }
     
     return modified;
@@ -56,16 +57,22 @@ bool LeechPass::runtimeForFunction(Function &F) {
     bool modified = false;
     
     /* Add conditional to preventive recursive replacement */
-    if (F.getName() == "ssadd") {
+    if (F.getName() == "vvadd") {
         /* Remove existing basic blocks */
-        BasicBlock* workList = NULL; // To collect replaced instructions within iterator
+        queue <BasicBlock*> workList; // To collect replaced instructions within iterator
 	    
 	    for (auto& B : F) {
-            workList = &B;
+            for (auto& I : B) {
+                Instruction* ins = &I;
+                ins->dropAllReferences();
+            }
+            workList.push(&B);
         }
-
-        if (workList != NULL)
-            workList->eraseFromParent();
+        
+        while (!workList.empty()) {
+            workList.front()->eraseFromParent();
+            workList.pop();
+        }
         
         int i = 0;
         Value* args[3];
@@ -82,18 +89,16 @@ bool LeechPass::runtimeForFunction(Function &F) {
         IRBuilder<> builder(pb);
 
         errs() << "Insert runtime function in " << F.getName() << "\n";
-	    FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
-	      "rtlib_double", Type::getDoubleTy(Ctx),
-          Type::getDoublePtrTy(Ctx), Type::getDoublePtrTy(Ctx), Type::getInt32Ty(Ctx)
+        FunctionCallee pyFunc = F.getParent()->getOrInsertFunction(
+            "func_replace", Type::getVoidTy(Ctx),
+            Type::getDoublePtrTy(Ctx), Type::getDoublePtrTy(Ctx), Type::getDoublePtrTy(Ctx)
 	    );
         // function call name and argument types have to be known
         
-        Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), 2, true);
-        args[2] = i32_select;
-	    Value* ret =  builder.CreateCall(rtFunc, args);
+	    builder.CreateCall(pyFunc, args);
   	    
         // Create return
-        Instruction *retInst = ReturnInst::Create(Ctx, ret, pb);
+        Instruction *retInst = ReturnInst::Create(Ctx, pb);
         modified = true;
     }
 
