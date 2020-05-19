@@ -1,9 +1,8 @@
 #include "ssadd.h"
 
-TYPE ssadd( TYPE* m1, TYPE* m2, TYPE* add ){
+void ssadd( TYPE m1[1], TYPE m2[1], TYPE add[1] ){
     TYPE temp;
 
-    temp = *m1 + *m2;
-    *add  = temp;
-    return *add;
+    temp = m1[0] + m2[0];
+    add[0]  = temp;
 }
