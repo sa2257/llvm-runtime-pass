@@ -16,8 +16,9 @@
 #include "llvm/Analysis/CallGraphSCCPass.h"
 
 #include <string.h>
-#include <vector>
+//#include <vector>
 #include <queue>
+#include <list>
 
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/CommandLine.h"
@@ -36,6 +37,7 @@ namespace {
       virtual bool runtimeForInstruction(Function &F); //called by runOnModule
       virtual bool runtimeForBasicBlock(Function &F); //called by runOnModule
       virtual bool runtimeForFunction(Function &F); //called by runOnModule
+      virtual bool checkInstrNotInList(list<Instruction*> List, Instruction &I);
   };
 }
 
@@ -46,8 +48,8 @@ bool LeechPass::runOnModule(Module &M)
     for (auto& F : M) {
         if (SwitchOn)
             //modified |= runtimeForInstruction(F);
-            //modified |= runtimeForBasicBlock(F);
-            modified |= runtimeForFunction(F);
+            modified |= runtimeForBasicBlock(F);
+            //modified |= runtimeForFunction(F);
     }
     
     return modified;
@@ -112,13 +114,29 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
     if (F.getName() == "diamond") {
         /* Select a basic block */
         BasicBlock* workList = NULL; // To collect replaced instructions within iterator
+        list <Instruction*> Used;
+        bool select = false;
+        int bbc = 0;
 	    for (auto& B : F) {
-	      for (auto& I : B) {
-	        if (auto* op = dyn_cast<BinaryOperator>(&I)) {
-                if(op->getOpcode() == Instruction::FAdd)
-                    workList = &B;
+	        for (auto& I : B) {
+	            if (auto* op = dyn_cast<BinaryOperator>(&I)) {
+                    if (op->getOpcode() == Instruction::FAdd ||
+                        op->getOpcode() == Instruction::FSub ||
+                        op->getOpcode() == Instruction::FMul ||
+                        op->getOpcode() == Instruction::FDiv ||
+                        op->getOpcode() == Instruction::FRem ) {
+                        if (bbc == 2 && !select) {
+                            workList = &B;
+                            select = true;
+                        }
+                        if (bbc == 2 && checkInstrNotInList(Used, I)) {// currently handling one group of ins per block
+                            Used.push_back(&I);
+                            //runOnInstr(Used, I);
+                        }
+                    }
+                }
             }
-          }
+            bbc++;
         }
         /* Done selecting a basic block */
         
@@ -126,45 +144,55 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
         BasicBlock* predBB = workList->getSinglePredecessor();
         BasicBlock* succBB = workList->getSingleSuccessor();
 
+        Instruction* firstIns;
+        Instruction* lastIns;
 	    if (workList != NULL) {
-            workList->eraseFromParent();
+            firstIns = Used.front();
+            lastIns = Used.back();
+            Used.pop_front(); Used.pop_back();
+            for (auto& I : Used ) {
+                I->eraseFromParent();
+            }
         }
+
+        // take 1, uses, check other operands, 
         
         /* Create new basic block */ 
 	    LLVMContext& Ctx = F.getContext();
-        //BasicBlock *pb = BasicBlock::Create(Ctx, "simple", &F, succBB);
-        BasicBlock *pb = BasicBlock::Create(Ctx, "simple", &F);
+        //BasicBlock *pb = BasicBlock::Create(Ctx, "simple", &F);
 
         // Create function call
-        IRBuilder<> builder(pb);
+        //IRBuilder<> builder(pb);
+        IRBuilder<> builder(workList);
 
         /* Enter instructions to the new basic block */
-        errs() << "Insert runtime basic block as " << pb->getName() << "\n";
+        errs() << "Insert runtime basic block as " << workList->getName() << "\n";
 	    FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
-	      "rtlib_int", Type::getInt32Ty(Ctx),
-          Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx)
+	        "bb_replace", Type::getInt32Ty(Ctx),
+            Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx)
 	    );
-        FunctionCallee logFunc = F.getParent()->getOrInsertFunction(
-                  "log_val", Type::getVoidTy(Ctx), Type::getInt32Ty(Ctx)
-                );
         // function call name and argument types have to be known
         
         Constant *i32_in1 = ConstantInt::get(Type::getInt32Ty(Ctx), 5, true);
         Constant *i32_in2 = ConstantInt::get(Type::getInt32Ty(Ctx), 6, true);
         Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), 2, true);
-        Value* args[] = {i32_in1, i32_in2, i32_select};
+	    Value* args[] = {firstIns->getOperand(0), firstIns->getOperand(1), i32_select};
 	    Value* ret =  builder.CreateCall(rtFunc, args);
-
-        Value* argsl[] = {ret};
-        builder.CreateCall(logFunc, argsl);
         /* Done entering new instructions */
             
+	    for (auto& U : lastIns->uses()) {
+	        User* user = U.getUser();
+	        user->setOperand(U.getOperandNo(), ret);
+	    }
+        firstIns->eraseFromParent();
+        lastIns->eraseFromParent();
+
         // Create a jump
-        Instruction *brInst = BranchInst::Create(succBB, pb);
+        //Instruction *brInst = BranchInst::Create(succBB, pb);
 
         // Update entry
-        Instruction *brPred = predBB->getTerminator();
-        brPred->setSuccessor(0, pb);
+        //Instruction *brPred = predBB->getTerminator();
+        //brPred->setSuccessor(0, pb);
 
         modified = true;
     }
@@ -266,6 +294,14 @@ bool LeechPass::runtimeForInstruction(Function &F) {
   	return modified;
 }
 
+bool LeechPass::checkInstrNotInList(list<Instruction*> List, Instruction &I) {
+    for (auto L: List) {
+        if (L == &I) {
+            return false;
+        }
+    }
+    return true;
+}
 
 char LeechPass::ID = 0;
 
