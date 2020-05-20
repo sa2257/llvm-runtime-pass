@@ -1,11 +1,11 @@
-# llvm-pass-skeleton
+# llvm-runtime-pass
 
-A completely useless LLVM pass.
+An LLVM template pass to use runtime function libraries.
 It's for LLVM 9.
 
 Build:
 
-    $ cd llvm-pass-skeleton
+    $ cd llvm-runtime-pass
     $ mkdir build
     $ cd build
     $ cmake ..
