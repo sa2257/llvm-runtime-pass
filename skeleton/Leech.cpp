@@ -116,7 +116,6 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
         BasicBlock* workList = NULL; // To collect replaced instructions within iterator
         list <Instruction*> Used;
         bool select = false;
-        int bbc = 0;
 	    for (auto& B : F) {
 	        for (auto& I : B) {
 	            if (auto* op = dyn_cast<BinaryOperator>(&I)) {
@@ -125,18 +124,16 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
                         op->getOpcode() == Instruction::FMul ||
                         op->getOpcode() == Instruction::FDiv ||
                         op->getOpcode() == Instruction::FRem ) {
-                        if (bbc == 2 && !select) {
+                        if (!select) {
                             workList = &B;
                             select = true;
                         }
-                        if (bbc == 2 && checkInstrNotInList(Used, I)) {// currently handling one group of ins per block
+                        if (checkInstrNotInList(Used, I)) {// currently handling one group of ins per block
                             Used.push_back(&I);
-                            //runOnInstr(Used, I);
                         }
                     }
                 }
             }
-            bbc++;
         }
         /* Done selecting a basic block */
         
@@ -144,29 +141,35 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
         BasicBlock* predBB = workList->getSinglePredecessor();
         BasicBlock* succBB = workList->getSingleSuccessor();
 
-        Instruction* firstIns;
-        Instruction* lastIns;
 	    if (workList != NULL) {
-            firstIns = Used.front();
-            lastIns = Used.back();
-            Used.pop_front(); Used.pop_back();
             for (auto& I : Used ) {
+                for (operands)
+                    if (outside)
+                        Inputs.push_back(operand);
+                    else
+                        Link.push_back(p-c);
+                        remove memory ops
+                for (uses)
+                    if (outside)
+                        Outputs.push_back(use);
+                    else
+                        check in links
                 I->eraseFromParent();
             }
         }
 
-        // take 1, uses, check other operands, 
+        // Take each ins, create arg from operands if they are not used in others in list.
+        // Replace all uses with rets if not used in list
+        // Remove ins produced and consumed by list
         
         /* Create new basic block */ 
 	    LLVMContext& Ctx = F.getContext();
-        //BasicBlock *pb = BasicBlock::Create(Ctx, "simple", &F);
 
         // Create function call
-        //IRBuilder<> builder(pb);
         IRBuilder<> builder(workList);
 
         /* Enter instructions to the new basic block */
-        errs() << "Insert runtime basic block as " << workList->getName() << "\n";
+        errs() << "Insert runtime function to " << workList << "\n";
 	    FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
 	        "bb_replace", Type::getInt32Ty(Ctx),
             Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx)
@@ -184,15 +187,6 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
 	        User* user = U.getUser();
 	        user->setOperand(U.getOperandNo(), ret);
 	    }
-        firstIns->eraseFromParent();
-        lastIns->eraseFromParent();
-
-        // Create a jump
-        //Instruction *brInst = BranchInst::Create(succBB, pb);
-
-        // Update entry
-        //Instruction *brPred = predBB->getTerminator();
-        //brPred->setSuccessor(0, pb);
 
         modified = true;
     }
