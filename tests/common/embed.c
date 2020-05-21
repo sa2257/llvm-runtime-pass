@@ -235,6 +235,97 @@ double call_ins_sim(char *module, char *function, double input1, double input2, 
     return output;
 }
 
+double call_chain_sim(char *module, char *function, double input1, double input2, double input3, double input4) {
+    PyObject *pName, *pModule, *pFunc;
+    PyObject *pArgs, *pRet, *pValue;
+    double output = 0.0;
+
+    Py_Initialize();
+    /* These two lines allow looking up for modules in the current directory */
+    PyRun_SimpleString("import sys");
+    PyRun_SimpleString("sys.path.append(\".\")");
+
+    pName = PyUnicode_DecodeFSDefault(module);
+    /* Error checking of pName left out */
+
+    pModule = PyImport_Import(pName);
+    Py_DECREF(pName);
+
+    if (pModule != NULL) {
+        pFunc = PyObject_GetAttrString(pModule, function);
+        /* pFunc is a new reference */
+
+        if (pFunc && PyCallable_Check(pFunc)) {
+            pArgs = PyTuple_New(4);
+
+            pValue = PyFloat_FromDouble(input1);
+            if (!pValue) {
+                Py_DECREF(pArgs);
+                Py_DECREF(pModule);
+                fprintf(stderr, "Cannot convert argument\n");
+                return output;
+            }
+            PyTuple_SetItem(pArgs, 0, pValue);
+            pValue = PyFloat_FromDouble(input2);
+            if (!pValue) {
+                Py_DECREF(pArgs);
+                Py_DECREF(pModule);
+                fprintf(stderr, "Cannot convert argument\n");
+                return output;
+            }
+            PyTuple_SetItem(pArgs, 1, pValue);
+            pValue = PyFloat_FromDouble(input3);
+            if (!pValue) {
+                Py_DECREF(pArgs);
+                Py_DECREF(pModule);
+                fprintf(stderr, "Cannot convert argument\n");
+                return output;
+            }
+            PyTuple_SetItem(pArgs, 2, pValue);
+            pValue = PyFloat_FromDouble(input4);
+            if (!pValue) {
+                Py_DECREF(pArgs);
+                Py_DECREF(pModule);
+                fprintf(stderr, "Cannot convert argument\n");
+                return output;
+            }
+            PyTuple_SetItem(pArgs, 3, pValue);
+            /* pArgs is the argument list */
+
+			pRet = PyObject_CallObject(pFunc, pArgs);
+            /* pRet is the return value from function call */
+
+            Py_DECREF(pArgs);
+            if (pRet != NULL) {
+                output = PyFloat_AsDouble(pRet);
+                Py_DECREF(pRet);
+            } else {
+                Py_DECREF(pFunc);
+                Py_DECREF(pModule);
+                PyErr_Print();
+                fprintf(stderr,"Call failed\n");
+                return output;
+            }
+        } else {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            fprintf(stderr, "Cannot find function \"%s\"\n", function);
+        }
+        Py_DECREF(pFunc);
+        Py_DECREF(pModule);
+    } else {
+        PyErr_Print();
+        fprintf(stderr, "Failed to load \"%s\"\n", module);
+        return output;
+    }
+
+    if (Py_FinalizeEx() < 0) {
+        return output;
+    }
+
+    return output;
+}
+
 int call_func_sim(char *module, char *function, double* input1, double* input2, double* output, int size) {
     PyObject *pName, *pModule, *pFunc;
     PyObject *pArgs, *pRet, *pValue;
@@ -372,13 +463,19 @@ double ins_replace(double in1, double in2, int ins) {
     return output;
 }
 
+// To replace chains
+void chain_replace(double in1, double in2, double in3, double in4) {
+    char *module = "overload";
+    char *function = "call_chain";
+    double output = call_chain_sim(module, function, in1, in2, in3, in4);
+    //printf("Output in C: %f\n",output);
+    //return output;
+}
+
 // To replace functions
 void func_replace(double* in1, double* in2, double* out) {
     char *module = "overload";
     char *function = "call_func";
-    //double input1[2] = {4.45, 3.25};
-    //double input2[2] = {3.85, 7.94};
-    //double output[2] = {0.00, 0.00};
     int ret = call_func_sim(module, function, in1, in2, out, 4096);
     if (ret > 0)
         fprintf(stderr, "Python function embedding returns error: %d!\n",ret);

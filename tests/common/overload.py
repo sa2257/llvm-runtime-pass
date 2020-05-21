@@ -57,6 +57,13 @@ def call_pe(in1, in2, op):
     compute, tempTicks = PE.operate([in1, in2], ticks)
     return compute 
 
+def call_chain(in1, in2, in3, in4):
+    im1 = in1 + in2
+    im2 = im1 * in3
+    im3 = im1 * in4
+    output = im2 + im3
+    return output
+
 def call_func(in1, in2, out):
     input1 = in1[0]
     input2 = in2[0]
