@@ -464,12 +464,12 @@ double ins_replace(double in1, double in2, int ins) {
 }
 
 // To replace chains
-void chain_replace(double in1, double in2, double in3, double in4) {
+double chain_replace(double in1, double in2, double in3, double in4) {
     char *module = "overload";
     char *function = "call_chain";
     double output = call_chain_sim(module, function, in1, in2, in3, in4);
-    //printf("Output in C: %f\n",output);
-    //return output;
+    printf("Output in C: %f\n",output);
+    return output;
 }
 
 // To replace functions
