@@ -38,6 +38,10 @@ namespace {
       virtual bool runtimeForBasicBlock(Function &F); //called by runOnModule
       virtual bool runtimeForFunction(Function &F); //called by runOnModule
       virtual bool checkInstrNotInList(list<Instruction*> List, Instruction &I);
+      virtual bool checkInstrIsFP(Instruction &I);
+      virtual int  checkChains(list <Instruction*> Used, list <Instruction*> Operands, 
+              //list <int, int> Links, 
+              Instruction &I, int chains);
   };
 }
 
@@ -113,81 +117,47 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
     // if function not selected, llvm goes crazy
     if (F.getName() == "diamond") {
         /* Select a basic block */
-        BasicBlock* workList = NULL; // To collect replaced instructions within iterator
         list <Instruction*> Used;
-        bool select = false;
+        list <Instruction*> Operands;
+        //list <int, int> Links;
+
 	    for (auto& B : F) {
 	        for (auto& I : B) {
 	            if (auto* op = dyn_cast<BinaryOperator>(&I)) {
-                    if (op->getOpcode() == Instruction::FAdd ||
-                        op->getOpcode() == Instruction::FSub ||
-                        op->getOpcode() == Instruction::FMul ||
-                        op->getOpcode() == Instruction::FDiv ||
-                        op->getOpcode() == Instruction::FRem ) {
-                        if (!select) {
-                            workList = &B;
-                            select = true;
-                        }
-                        if (checkInstrNotInList(Used, I)) {// currently handling one group of ins per block
-                            Used.push_back(&I);
-                        }
-                    }
-                }
-            }
-        }
-        /* Done selecting a basic block */
+                    if (checkInstrIsFP(I) && checkInstrNotInList(Used, I)) {
+                        int chains = checkChains(Used, Operands, I, 0);
         
-        // Enter and exit to the basic block- single for now
-        BasicBlock* predBB = workList->getSinglePredecessor();
-        BasicBlock* succBB = workList->getSingleSuccessor();
-
-	    if (workList != NULL) {
-            for (auto& I : Used ) {
-                for (operands)
-                    if (outside)
-                        Inputs.push_back(operand);
-                    else
-                        Link.push_back(p-c);
-                        remove memory ops
-                for (uses)
-                    if (outside)
-                        Outputs.push_back(use);
-                    else
-                        check in links
-                I->eraseFromParent();
-            }
-        }
-
-        // Take each ins, create arg from operands if they are not used in others in list.
-        // Replace all uses with rets if not used in list
-        // Remove ins produced and consumed by list
+        /* Done selecting a basic block */
         
         /* Create new basic block */ 
 	    LLVMContext& Ctx = F.getContext();
 
         // Create function call
-        IRBuilder<> builder(workList);
+        IRBuilder<> builder(&B);
 
         /* Enter instructions to the new basic block */
-        errs() << "Insert runtime function to " << workList << "\n";
+        errs() << "Insert runtime function to " << B << "\n";
 	    FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
 	        "bb_replace", Type::getInt32Ty(Ctx),
             Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx)
 	    );
         // function call name and argument types have to be known
         
-        Constant *i32_in1 = ConstantInt::get(Type::getInt32Ty(Ctx), 5, true);
-        Constant *i32_in2 = ConstantInt::get(Type::getInt32Ty(Ctx), 6, true);
         Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), 2, true);
-	    Value* args[] = {firstIns->getOperand(0), firstIns->getOperand(1), i32_select};
+	    Value* args[] = {i32_select, i32_select, i32_select};//{firstIns->getOperand(0), firstIns->getOperand(1), i32_select};
 	    Value* ret =  builder.CreateCall(rtFunc, args);
         /* Done entering new instructions */
+                    }
+                }
+            }
+        }
             
-	    for (auto& U : lastIns->uses()) {
-	        User* user = U.getUser();
-	        user->setOperand(U.getOperandNo(), ret);
-	    }
-
+	   // if (workList != NULL) {
+            for (auto& I : Used ) {
+                I->eraseFromParent();
+            }
+       //}
+        
         modified = true;
     }
 	
@@ -295,6 +265,45 @@ bool LeechPass::checkInstrNotInList(list<Instruction*> List, Instruction &I) {
         }
     }
     return true;
+}
+
+bool LeechPass::checkInstrIsFP(Instruction &I) {
+    if (I.getOpcode() == Instruction::FAdd ||
+        I.getOpcode() == Instruction::FSub ||
+        I.getOpcode() == Instruction::FMul ||
+        I.getOpcode() == Instruction::FDiv ||
+        I.getOpcode() == Instruction::FRem ) {
+        return true;
+    }
+    return false;
+}
+
+int LeechPass::checkChains(list <Instruction*> Used, list <Instruction*> Operands, 
+        //list <int, int> Links, 
+        Instruction &I, int chains) {
+    int prChains = chains;
+    int slot = 0;
+    for (auto& O : I.operand_values()) {
+        if (checkInstrNotInList(Used, O)) {
+            Operands.push_back(O);
+            //Links.push_back(Operands.size(), chains);
+        }
+    }
+
+    for (auto& U : I.uses()) {
+        User* user = U.getUser();
+        if (auto* op = dyn_cast<BinaryOperator>(*user)) {
+            Instruction* ins = cast<Instruction>(user);
+            if (checkInstrIsFP(ins) && checkInstrNotInList(Used, ins)) {
+                chains = checkChains(Used, Operands, ins, chains);
+                Used.push_back(ins);
+                chains++;
+                //Links.push_back(prChains, chains);
+            }
+        }
+    }
+
+    return chains;
 }
 
 char LeechPass::ID = 0;
