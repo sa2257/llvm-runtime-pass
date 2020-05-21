@@ -52,7 +52,7 @@ bool LeechPass::runOnModule(Module &M)
         if (SwitchOn)
             //modified |= runtimeForInstruction(F);
             modified |= runtimeForSubBlock(F);
-            modified |= runtimeForBasicBlock(F);
+            //modified |= runtimeForBasicBlock(F);
             //modified |= runtimeForFunction(F);
     }
     
@@ -182,7 +182,7 @@ bool LeechPass::runtimeForSubBlock(Function &F) {
     bool modified = false;
     LLVMContext& Ctx = F.getContext();
     FunctionCallee pyFunc = F.getParent()->getOrInsertFunction(
-        "chain_replace", Type::getVoidTy(Ctx),
+        "chain_replace", Type::getDoubleTy(Ctx),
         Type::getDoubleTy(Ctx), Type::getDoubleTy(Ctx),
         Type::getDoubleTy(Ctx), Type::getDoubleTy(Ctx)
 	);
@@ -191,6 +191,7 @@ bool LeechPass::runtimeForSubBlock(Function &F) {
     if (F.getName() == "diamond") {
 		for (auto &B: F) {
             list <Instruction*> Selected;
+        /* Select a basic block */
 		    for (auto &I: B) {
 		        if (auto* op = dyn_cast<BinaryOperator>(&I)) {
 		            if (checkInstrIsFP(I)) {
@@ -200,7 +201,7 @@ bool LeechPass::runtimeForSubBlock(Function &F) {
 		                Value* rhs = op->getOperand(1);
                         select = select | checkForChains(rhs);
 		                for (auto& U : op->uses()) {
-		                    Value* user = U.getUser();  // A User is anything with operands.
+		                    Value* user = U.getUser();
                             select = select | checkForChains(user);
 		                }
                         if (select) {
@@ -210,8 +211,10 @@ bool LeechPass::runtimeForSubBlock(Function &F) {
                     }
 		        }
 		    }
+        /* Done selecting a basic block */
 
             Value* args[4];
+        /* Enter instructions to the new basic block */
             int idx = 0, i = 0;
             for (auto &I: Selected) {
                 i++;
@@ -229,13 +232,26 @@ bool LeechPass::runtimeForSubBlock(Function &F) {
                 if (i == Selected.size()) {
                     IRBuilder<> builder(I);
                     builder.SetInsertPoint(&B, ++builder.GetInsertPoint());
-                    builder.CreateCall(pyFunc, args);
+	                Value* ret =  builder.CreateCall(pyFunc, args);
+	
+                    /* forward return to users */
+	                for (auto& U : I->uses()) {
+	                    User* user = U.getUser();
+	                    user->setOperand(U.getOperandNo(), ret);
+	                }
                 }
             }
+        /* Done entering new instructions */
+            
+        /* Remove replaced instructions from the basic block */
+            while (!Selected.empty()) {
+                Selected.front()->eraseFromParent();
+                Selected.pop_front();
+            }
+        /* Done removing replaced instructions */
 
-            //Need to track uses
-            //Need to separate different chains
-            //Need to fix dump
+            // Chain assumes to consume all the uses, a check is not done yet
+            // This doesn't support multiple chains in the same BB
         }
     }
     return modified;
