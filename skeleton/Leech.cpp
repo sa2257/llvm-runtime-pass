@@ -35,13 +35,11 @@ namespace {
       
       virtual bool runOnModule(Module &M); //when there is a Module
       virtual bool runtimeForInstruction(Function &F); //called by runOnModule
-      virtual bool runtimeForBasicBlock(Function &F); //called by runOnModule
       virtual bool runtimeForFunction(Function &F); //called by runOnModule
-      virtual bool checkInstrNotInList(list<Instruction*> List, Instruction &I);
+      virtual bool checkNotInList(list<Instruction*> List, Value *V);
       virtual bool checkInstrIsFP(Instruction &I);
-      virtual int  checkChains(list <Instruction*> Used, list <Instruction*> Operands, 
-              //list <int, int> Links, 
-              Instruction &I, int chains);
+      virtual bool runtimeForSubBlock(Function &F);
+      virtual bool checkForChains(Value *V);
   };
 }
 
@@ -52,7 +50,7 @@ bool LeechPass::runOnModule(Module &M)
     for (auto& F : M) {
         if (SwitchOn)
             //modified |= runtimeForInstruction(F);
-            modified |= runtimeForBasicBlock(F);
+            modified |= runtimeForSubBlock(F);
             //modified |= runtimeForFunction(F);
     }
     
@@ -111,57 +109,89 @@ bool LeechPass::runtimeForFunction(Function &F) {
     return modified;
 }
 
-bool LeechPass::runtimeForBasicBlock(Function &F) {
+bool LeechPass::checkForChains(Value *V) {
+    if(isa<Instruction>(V)) {
+        Instruction *I = cast<Instruction>(V);
+        if (checkInstrIsFP(*I)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool LeechPass::checkNotInList(list<Instruction*> List, Value *V) {
+    if(isa<Instruction>(V)) {
+        Instruction *I = cast<Instruction>(V);
+        for (auto L: List) {
+            if (L == I) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool LeechPass::runtimeForSubBlock(Function &F) {
     bool modified = false;
+    LLVMContext& Ctx = F.getContext();
+    FunctionCallee pyFunc = F.getParent()->getOrInsertFunction(
+        "chain_replace", Type::getVoidTy(Ctx),
+        Type::getDoubleTy(Ctx), Type::getDoubleTy(Ctx),
+        Type::getDoubleTy(Ctx), Type::getDoubleTy(Ctx)
+	);
     
     // if function not selected, llvm goes crazy
     if (F.getName() == "diamond") {
-        /* Select a basic block */
-        list <Instruction*> Used;
-        list <Instruction*> Operands;
-        //list <int, int> Links;
-
-	    for (auto& B : F) {
-	        for (auto& I : B) {
-	            if (auto* op = dyn_cast<BinaryOperator>(&I)) {
-                    if (checkInstrIsFP(I) && checkInstrNotInList(Used, I)) {
-                        int chains = checkChains(Used, Operands, I, 0);
-        
-        /* Done selecting a basic block */
-        
-        /* Create new basic block */ 
-	    LLVMContext& Ctx = F.getContext();
-
-        // Create function call
-        IRBuilder<> builder(&B);
-
-        /* Enter instructions to the new basic block */
-        errs() << "Insert runtime function to " << B << "\n";
-	    FunctionCallee rtFunc = F.getParent()->getOrInsertFunction(
-	        "bb_replace", Type::getInt32Ty(Ctx),
-            Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx)
-	    );
-        // function call name and argument types have to be known
-        
-        Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), 2, true);
-	    Value* args[] = {i32_select, i32_select, i32_select};//{firstIns->getOperand(0), firstIns->getOperand(1), i32_select};
-	    Value* ret =  builder.CreateCall(rtFunc, args);
-        /* Done entering new instructions */
+		for (auto &B: F) {
+            list <Instruction*> Selected;
+		    for (auto &I: B) {
+		        if (auto* op = dyn_cast<BinaryOperator>(&I)) {
+		            if (checkInstrIsFP(I)) {
+                        bool select = false;
+		                Value* lhs = op->getOperand(0);
+                        select = select | checkForChains(lhs);
+		                Value* rhs = op->getOperand(1);
+                        select = select | checkForChains(rhs);
+		                for (auto& U : op->uses()) {
+		                    Value* user = U.getUser();  // A User is anything with operands.
+                            select = select | checkForChains(user);
+		                }
+                        if (select) {
+                            Selected.push_back(&I);
+		                    errs() << op->getOpcodeName() << " added to the list!\n";
+                        }
                     }
+		        }
+		    }
+
+            Value* args[4];
+            int idx = 0, i = 0;
+            for (auto &I: Selected) {
+                i++;
+		        Value* lhs = I->getOperand(0);
+                if (checkNotInList(Selected, lhs)) {
+                    args[idx] = lhs;
+                    idx++;
+                }
+
+		        Value* rhs = I->getOperand(1);
+                if (checkNotInList(Selected, rhs)) {
+                    args[idx] = rhs;
+                    idx++;
+                }
+                if (i == Selected.size()) {
+                    IRBuilder<> builder(I);
+                    builder.SetInsertPoint(&B, ++builder.GetInsertPoint());
+                    builder.CreateCall(pyFunc, args);
                 }
             }
+
+            //Need to track uses
+            //Need to separate different chains
+            //Need to fix dump
         }
-            
-	   // if (workList != NULL) {
-            for (auto& I : Used ) {
-                I->eraseFromParent();
-            }
-       //}
-        
-        modified = true;
     }
-	
-  	return modified;
+    return modified;
 }
 
 bool LeechPass::runtimeForInstruction(Function &F) {
@@ -258,15 +288,6 @@ bool LeechPass::runtimeForInstruction(Function &F) {
   	return modified;
 }
 
-bool LeechPass::checkInstrNotInList(list<Instruction*> List, Instruction &I) {
-    for (auto L: List) {
-        if (L == &I) {
-            return false;
-        }
-    }
-    return true;
-}
-
 bool LeechPass::checkInstrIsFP(Instruction &I) {
     if (I.getOpcode() == Instruction::FAdd ||
         I.getOpcode() == Instruction::FSub ||
@@ -276,34 +297,6 @@ bool LeechPass::checkInstrIsFP(Instruction &I) {
         return true;
     }
     return false;
-}
-
-int LeechPass::checkChains(list <Instruction*> Used, list <Instruction*> Operands, 
-        //list <int, int> Links, 
-        Instruction &I, int chains) {
-    int prChains = chains;
-    int slot = 0;
-    for (auto& O : I.operand_values()) {
-        if (checkInstrNotInList(Used, O)) {
-            Operands.push_back(O);
-            //Links.push_back(Operands.size(), chains);
-        }
-    }
-
-    for (auto& U : I.uses()) {
-        User* user = U.getUser();
-        if (auto* op = dyn_cast<BinaryOperator>(*user)) {
-            Instruction* ins = cast<Instruction>(user);
-            if (checkInstrIsFP(ins) && checkInstrNotInList(Used, ins)) {
-                chains = checkChains(Used, Operands, ins, chains);
-                Used.push_back(ins);
-                chains++;
-                //Links.push_back(prChains, chains);
-            }
-        }
-    }
-
-    return chains;
 }
 
 char LeechPass::ID = 0;
