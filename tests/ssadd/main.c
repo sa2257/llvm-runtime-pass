@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "ssadd.h"
+#define WRITE_TIME
 #define CHECK_OUTPUT
 #define EPSILON ((TYPE)1.0e-6)
 
@@ -30,6 +31,15 @@ int main() {
     perf_stop(&perf_ctr);
     uint64_t perf_cycles = perf_avg_cycles(&perf_ctr);
     printf("Average execution time for benchmark: %llu \n", perf_cycles );
+#ifdef WRITE_TIME
+    char const *time_file;
+    time_file = "time.data";
+    
+    int time_fd;
+    time_fd = open( time_file, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+    assert( time_fd>0 && "Couldn't open timing data file");
+    dprintf(time_fd, "%llu \n", perf_cycles);
+#endif
 
 #ifdef CHECK_OUTPUT
     TYPE diff = c[0] - refs[0];

@@ -19,7 +19,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
-void gemm( TYPE *m1, TYPE *m2, TYPE *prod );
+void kernel( TYPE *m1, TYPE *m2, TYPE *prod );
 
 struct bench_args_t {
   TYPE m1[N];

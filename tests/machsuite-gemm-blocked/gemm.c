@@ -7,7 +7,7 @@ ASPLOS 1991
 
 #include "gemm.h"
 
-void gemm(TYPE m1[N], TYPE m2[N], TYPE prod[N]){
+void kernel(TYPE m1[N], TYPE m2[N], TYPE prod[N]){
 #pragma HLS INTERFACE s_axilite port=m1
 #pragma HLS INTERFACE s_axilite port=m2
 #pragma HLS INTERFACE s_axilite port=prod

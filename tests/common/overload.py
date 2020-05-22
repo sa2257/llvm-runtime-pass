@@ -64,13 +64,13 @@ def call_chain(in1, in2, in3, in4):
     output = im2 + im3
     return output
 
-def call_func(in1, in2, out):
-    input1 = in1[0]
-    input2 = in2[0]
-    output = out[0]
-    for i, (i1, i2) in enumerate(zip(input1, input2)):
-        output[i] = i1 + i2
-    return output
+#def call_func(in1, in2, out):
+#    input1 = in1[0]
+#    input2 = in2[0]
+#    output = out[0]
+#    for i, (i1, i2) in enumerate(zip(input1, input2)):
+#        output[i] = i1 + i2
+#    return output
 
 def call_func(in1, in2, out):
     input1 = in1[0]
