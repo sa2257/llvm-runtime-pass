@@ -5,6 +5,10 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+//#define WRITE_OUTPUT
+#define CHECK_OUTPUT
+#define EPSILON ((TYPE)1.0e-6)
+
 char *readfile(int fd) {
   char *p; 
   struct stat s;
@@ -45,6 +49,12 @@ char *find_section_start(char *s, int n) {
   if(*s!=(char)0)
     return s+2; // Skip the section header itself, return pointer to the content
   return s; // Hit the end, return an empty string
+}
+
+int write_section_header(int fd) {
+    assert(fd>1 && "Invalid file descriptor");
+    dprintf(fd, "%%%%\n"); // Just prints %%
+    return 0;
 }
 
 int parse_int_array(char *s, TYPE *arr, int n) { 
@@ -99,7 +109,16 @@ int parse_double_array(char *s, TYPE *arr, int n) {
   return 0; 
 }
 
-void run_benchmark() {
+int write_double_array(int fd, TYPE *arr, int n) {
+    int i;
+    assert(fd>1 && "Invalid file descriptor");
+    for( i=0; i<n; i++ ) {
+        dprintf(fd, "%" ".16f" "\n", arr[i]);
+    }
+    return 0;
+}
+
+int run_benchmark() {
     struct bench_args_t args;
     char const *in_file;
     in_file = "input_double.data";
@@ -124,10 +143,48 @@ void run_benchmark() {
         }
     }
     vvadd( args.m1, args.m2, args.add );
-    printf("One example output is %f \n", args.add[N-1]);
+
+#ifdef WRITE_OUTPUT
+    char const *out_file;
+    out_file = "output.data";
+    
+    int out_fd;
+    out_fd = open( out_file, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+    assert( out_fd>0 && "Couldn't open output data file");
+    write_section_header(out_fd);
+    write_double_array(out_fd, args.add, N);
+#endif
+
+#ifdef CHECK_OUTPUT
+    struct bench_args_t refs;
+    char const *chk_file;
+    chk_file = "check.data";
+	
+	int chk_fd;
+	chk_fd = open( chk_file, O_RDONLY );
+	assert( chk_fd>0 && "Couldn't open check data file");
+	
+    p = readfile(chk_fd);
+    
+    s = find_section_start(p,1);
+    parse_double_array(s, refs.add, N);
+
+	for(int i = 0;  i < row_size; i++) {
+		for(int j = 0; j < col_size; j++) {
+			TYPE diff = args.add[i * row_size + j] - refs.add[ i * row_size + j];
+			if ((diff<-EPSILON) || (EPSILON<diff)) {
+	  			fprintf(stderr, "Benchmark results are incorrect\n");
+				return -1;
+			}
+		}
+	}
+	free(p);
+#endif
+	
+	printf("Success.\n");
+	return 0;
 }
 
 int main () {
-    run_benchmark();
-    return 1;
+    return run_benchmark();
 }

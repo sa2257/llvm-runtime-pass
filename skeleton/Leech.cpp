@@ -16,7 +16,6 @@
 #include "llvm/Analysis/CallGraphSCCPass.h"
 
 #include <string.h>
-//#include <vector>
 #include <queue>
 #include <list>
 
@@ -29,19 +28,20 @@ using namespace llvm;
 static cl::opt<bool> SwitchOn("select", cl::desc("Select to run pass"));
 
 namespace {
-  struct LeechPass : public ModulePass {
-      static char ID;
-      LeechPass() : ModulePass(ID) {}
-      
-      virtual bool runOnModule(Module &M); //when there is a Module
-      virtual bool runtimeForFunction(Function &F);    // called by runOnModule
-      virtual bool runtimeForBasicBlock(Function &F);  // called by runOnModule
-      virtual bool runtimeForSubBlock(Function &F);    // called by runOnModule
-      virtual bool runtimeForInstruction(Function &F); // called by runOnModule
-      virtual bool checkNotInList(list<Instruction*> List, Value *V);
-      virtual bool checkInstrIsFP(Instruction &I);
-      virtual bool checkForChains(Value *V);
-  };
+    struct LeechPass : public ModulePass {
+        static char ID;
+        LeechPass() : ModulePass(ID) {}
+        
+        virtual bool runOnModule(Module &M); //when there is a Module
+        virtual bool runtimeForFunction(Function &F);    // called by runOnModule
+        virtual bool runtimeForBasicBlock(Function &F);  // called by runOnModule
+        virtual bool runtimeForSubBlock(Function &F);    // called by runOnModule
+        virtual bool runtimeForInstruction(Function &F); // called by runOnModule
+        virtual bool checkNotInList(list<Instruction*> List, Value *V);
+        virtual bool checkInstrIsFP(Instruction &I);
+        virtual int  findInstrOp(Instruction &I);
+        virtual bool checkForChains(Value *V);
+    };
 }
 
 bool LeechPass::runOnModule(Module &M)
@@ -50,8 +50,8 @@ bool LeechPass::runOnModule(Module &M)
     
     for (auto& F : M) {
         if (SwitchOn)
-            //modified |= runtimeForInstruction(F);
-            modified |= runtimeForSubBlock(F);
+            modified |= runtimeForInstruction(F);
+            //modified |= runtimeForSubBlock(F);
             //modified |= runtimeForBasicBlock(F);
             //modified |= runtimeForFunction(F);
     }
@@ -260,95 +260,53 @@ bool LeechPass::runtimeForSubBlock(Function &F) {
 bool LeechPass::runtimeForInstruction(Function &F) {
     bool modified = false;
     Instruction* workList = NULL; // To collect replaced instructions within iterator
-	
-	for (auto& B : F) {
-	  for (auto& I : B) {
-          /* Add runtime function selection here */
-	    if (auto* op = dyn_cast<BinaryOperator>(&I)) {
-	      errs() << "Insert function call after " << op->getOpcodeName() << "!\n";
-          int func = 0;
-          switch (op->getOpcode()) {
-              //case Instruction::FNeg: // fp negation
-              //    func = 7; break;
-              case Instruction::Add: // addition
-                  func = 2; break;
-              case Instruction::FAdd: // fp addition
-                  func = 8; break;
-              case Instruction::Sub: // subtraction
-                  func = 3; break;
-              case Instruction::FSub: // fp subtraction
-                  func = 9; break;
-              case Instruction::Mul: // multiplication
-                  func = 4; break;
-              case Instruction::FMul: // fp multiplication
-                  func = 10; break;
-              case Instruction::UDiv: // division unsigned
-              case Instruction::SDiv: // division signed
-                  func = 5; break;
-              case Instruction::FDiv: // fp division
-                  func = 11; break;
-              case Instruction::URem: // remainder unsigned
-              case Instruction::SRem: // remainder signed
-                  func = 6; break;
-              case Instruction::FRem: // fp remainder
-                  func = 12; break;
-              case Instruction::And: // and
-                  func = 13; break;
-              case Instruction::Or: // or
-                  func = 14; break;
-              case Instruction::Xor: // xor
-                  func = 15; break;
-              default:
-                  break;
-          }
-	      /* End of selection algorithm */
-          /* find the place to enter the runtime call */
-          IRBuilder<> builder(op);
-	      builder.SetInsertPoint(&B, ++builder.GetInsertPoint());
-	
-          /* create the function call from runtime library */
-	      LLVMContext& Ctx = F.getContext();
-	      FunctionCallee rtFunc;
-          if (func < 6) {
-	          rtFunc = F.getParent()->getOrInsertFunction(
-	              "rtlib_int", Type::getInt32Ty(Ctx),
-                  Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx), Type::getInt32Ty(Ctx)
-	              );
-          } else {
-	          rtFunc = F.getParent()->getOrInsertFunction(
-	              "rtlib_sim", Type::getDoubleTy(Ctx),
-                  Type::getDoubleTy(Ctx), Type::getDoubleTy(Ctx), Type::getInt32Ty(Ctx)
-	              );
-          }
-          // function call name and argument types have to be known
     
-          /* insert runtime call */
-          if(func > 6) {
-	      errs() << "Insert a call to our function!\n";
-          Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), func, true);
-	      Value* args[] = {op->getOperand(0), op->getOperand(1), i32_select};
-	      Value* ret =  builder.CreateCall(rtFunc, args);
-	
-          /* forward return to users */
-	      for (auto& U : op->uses()) {
-	          User* user = U.getUser();
-	          user->setOperand(U.getOperandNo(), ret);
-	      }
-
-          workList = &I;
-
-          modified = true;
-
-          }
-	      
-	    }
-	  }
-	}
-
-	if (workList != NULL)
+    for (auto& B : F) {
+        for (auto& I : B) {
+            /* Add runtime function selection here */
+            if (auto* op = dyn_cast<BinaryOperator>(&I)) {
+                int func = findInstrOp(I);
+                /* End of selection algorithm */
+                /* find the place to enter the runtime call */
+                IRBuilder<> builder(op);
+                builder.SetInsertPoint(&B, ++builder.GetInsertPoint());
+                
+                /* create the function call from runtime library */
+                LLVMContext& Ctx = F.getContext();
+                FunctionCallee rtFunc;
+                if (func > 6) {
+                    rtFunc = F.getParent()->getOrInsertFunction(
+                        "ins_replace", Type::getDoubleTy(Ctx),
+                        Type::getDoubleTy(Ctx), Type::getDoubleTy(Ctx), Type::getInt32Ty(Ctx)
+                        );
+                }
+                // function call name and argument types have to be known
+                
+                /* insert runtime call */
+                if(func > 6) {
+	                errs() << "Insert function call after " << op->getOpcodeName() << "!\n";
+                    Constant *i32_select = ConstantInt::get(Type::getInt32Ty(Ctx), func, true);
+                    Value* args[] = {op->getOperand(0), op->getOperand(1), i32_select};
+                    Value* ret =  builder.CreateCall(rtFunc, args);
+                    
+                    /* forward return to users */
+                    for (auto& U : op->uses()) {
+                        User* user = U.getUser();
+                        user->setOperand(U.getOperandNo(), ret);
+                    }
+                    
+                    workList = &I;
+                    
+                    modified = true;
+                }
+            }
+        }
+    }
+    
+    if (workList != NULL)
         workList->eraseFromParent();
-
-  	return modified;
+    
+    return modified;
 }
 
 bool LeechPass::checkNotInList(list<Instruction*> List, Value *V) {
@@ -372,6 +330,45 @@ bool LeechPass::checkInstrIsFP(Instruction &I) {
         return true;
     }
     return false;
+}
+
+int LeechPass::findInstrOp(Instruction &I) {
+    int func = 0;
+    switch (I.getOpcode()) {
+        //case Instruction::FNeg: // fp negation
+        //    func = 7; break;
+        case Instruction::Add: // addition
+            func = 2; break;
+        case Instruction::FAdd: // fp addition
+            func = 8; break;
+        case Instruction::Sub: // subtraction
+            func = 3; break;
+        case Instruction::FSub: // fp subtraction
+            func = 9; break;
+        case Instruction::Mul: // multiplication
+            func = 4; break;
+        case Instruction::FMul: // fp multiplication
+            func = 10; break;
+        case Instruction::UDiv: // division unsigned
+        case Instruction::SDiv: // division signed
+            func = 5; break;
+        case Instruction::FDiv: // fp division
+            func = 11; break;
+        case Instruction::URem: // remainder unsigned
+        case Instruction::SRem: // remainder signed
+            func = 6; break;
+        case Instruction::FRem: // fp remainder
+            func = 12; break;
+        case Instruction::And: // and
+            func = 13; break;
+        case Instruction::Or: // or
+            func = 14; break;
+        case Instruction::Xor: // xor
+            func = 15; break;
+        default:
+            break;
+    }
+    return func;
 }
 
 bool LeechPass::checkForChains(Value *V) {

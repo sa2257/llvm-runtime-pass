@@ -51,5 +51,5 @@ runtime: $(TARGET)
 
 .PHONY: clean
 clean:
-	rm -rf $(LLVMS) $(PASSES) $(TARGET) $(SIMPLE)  __pycache__
+	rm -rf $(LLVMS) $(PASSES) $(TARGET) $(SIMPLE)  __pycache__ output.data
 
