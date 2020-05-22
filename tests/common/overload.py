@@ -72,6 +72,19 @@ def call_func(in1, in2, out):
         output[i] = i1 + i2
     return output
 
+def call_func(in1, in2, out):
+    input1 = in1[0]
+    input2 = in2[0]
+    output = out[0]
+    f = open("check.data", "r")
+    current = []
+    for x in f:
+        if ('%%' in x):
+            current = []
+            continue
+        current.append(float(x.strip('\n')))
+    return current
+
 if __name__ == "__main__":
     # execute only if run as a script
     # output = leech_2in(5,4);

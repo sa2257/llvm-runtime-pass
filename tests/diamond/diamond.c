@@ -1,6 +1,6 @@
 #include "diamond.h"
 
-void diamond( TYPE m1[N], TYPE m2[N], TYPE add[N] ){
+void kernel( TYPE m1[N], TYPE m2[N], TYPE add[N] ){
     int i;
     TYPE temp1, intm1, intm2, temp2;
 

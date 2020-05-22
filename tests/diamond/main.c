@@ -159,7 +159,7 @@ int run_benchmark() {
     struct perf_counter_t perf_ctr;
     perf_reset(&perf_ctr);
     perf_start(&perf_ctr);
-    diamond( args.m1, args.m2, args.add );
+    kernel( args.m1, args.m2, args.add );
     perf_stop(&perf_ctr);
     uint64_t perf_cycles = perf_avg_cycles(&perf_ctr);
     printf("Average execution time for benchmark: %llu \n", perf_cycles );

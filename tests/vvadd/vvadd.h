@@ -21,7 +21,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 // Test harness interface code.
-void vvadd( TYPE *m1, TYPE *m2, TYPE *add );
+void kernel( TYPE *m1, TYPE *m2, TYPE *add );
 
 struct bench_args_t {
   TYPE m1[N];

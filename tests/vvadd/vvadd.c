@@ -1,6 +1,6 @@
 #include "vvadd.h"
 
-void vvadd( TYPE m1[N], TYPE m2[N], TYPE add[N] ){
+void kernel( TYPE m1[N], TYPE m2[N], TYPE add[N] ){
     int i;
     TYPE temp;
 

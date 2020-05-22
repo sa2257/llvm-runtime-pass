@@ -50,10 +50,10 @@ bool LeechPass::runOnModule(Module &M)
     
     for (auto& F : M) {
         if (SwitchOn)
-            modified |= runtimeForInstruction(F);
+            //modified |= runtimeForInstruction(F);
             //modified |= runtimeForSubBlock(F);
             //modified |= runtimeForBasicBlock(F);
-            //modified |= runtimeForFunction(F);
+            modified |= runtimeForFunction(F);
     }
     
     return modified;
@@ -63,7 +63,7 @@ bool LeechPass::runtimeForFunction(Function &F) {
     bool modified = false;
     
     /* Add conditional to preventive recursive replacement */
-    if (F.getName() == "vvadd") {
+    if (F.getName() == "kernel") {
         /* Remove existing basic blocks */
         queue <BasicBlock*> workList; // To collect replaced instructions within iterator
 	    
