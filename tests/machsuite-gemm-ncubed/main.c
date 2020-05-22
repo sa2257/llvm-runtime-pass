@@ -1,7 +1,7 @@
 #include <fcntl.h>
 #include <assert.h>
 #include <string.h>
-#include "vvadd.h"
+#include "gemm.h"
 #include <unistd.h>
 #include <sys/stat.h>
 
@@ -126,7 +126,7 @@ int write_int_array(int fd, TYPE *arr, int n) {
     int i;
     assert(fd>1 && "Invalid file descriptor");
     for( i=0; i<n; i++ ) {
-        dprintf(fd, "%d\n", arr[i]);
+        //dprintf(fd, "%d\n", arr[i]);
     }
     return 0;
 }
@@ -161,14 +161,14 @@ int run_benchmark() {
 
     for (int i = 0; i < row_size; i++) {
         for (int j = 0; j < col_size; j++) {
-            args.add[i * row_size + j] = 0;
+            args.prod[i * row_size + j] = 0;
         }
     }
 
     struct perf_counter_t perf_ctr;
     perf_reset(&perf_ctr);
     perf_start(&perf_ctr);
-    vvadd( args.m1, args.m2, args.add );
+    gemm( args.m1, args.m2, args.prod );
     perf_stop(&perf_ctr);
     uint64_t perf_cycles = perf_avg_cycles(&perf_ctr);
     printf("Average execution time for benchmark: %llu \n", perf_cycles );
@@ -181,7 +181,7 @@ int run_benchmark() {
     out_fd = open( out_file, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
     assert( out_fd>0 && "Couldn't open output data file");
     write_section_header(out_fd);
-    write_double_array(out_fd, args.add, N);
+    write_double_array(out_fd, args.prod, N);
 #endif
 
 #ifdef CHECK_OUTPUT
@@ -196,11 +196,11 @@ int run_benchmark() {
     p = readfile(chk_fd);
     
     s = find_section_start(p,1);
-    parse_double_array(s, refs.add, N);
+    parse_double_array(s, refs.prod, N);
 
 	for(int i = 0;  i < row_size; i++) {
 		for(int j = 0; j < col_size; j++) {
-			TYPE diff = args.add[i * row_size + j] - refs.add[ i * row_size + j];
+			TYPE diff = args.prod[i * row_size + j] - refs.prod[ i * row_size + j];
 			if ((diff<-EPSILON) || (EPSILON<diff)) {
 	  			fprintf(stderr, "Benchmark results are incorrect\n");
 				return -1;

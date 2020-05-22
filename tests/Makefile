@@ -2,6 +2,7 @@ BENCHMARKS=\
 	ssadd \
 	vvadd \
 	diamond \
+	machsuite-gemm-ncubed \
 	#machsuite-aes \
 	machsuite-backprop \
 	machsuite-bfs-bulk \
@@ -9,7 +10,6 @@ BENCHMARKS=\
 	machsuite-fft-strided \
 	machsuite-fft-transpose \
 	machsuite-gemm-blocked \
-	machsuite-gemm-ncubed \
 	machsuite-gemm-ncubed-int \
 	machsuite-kmp \
 	machsuite-md-grid \
