@@ -1,4 +1,4 @@
-SOURCES   := $(HW_SRCS) $(HOST_SRCS) $(RT_SRCS)
+SOURCES   := $(HW_SRCS) $(HOST_SRCS)
 LLVMS     := $(SOURCES:%.c=%.ll)
 HOST      := $(HOST_SRCS:%.c=%.ll)
 RTPASS    := $(HW_SRCS:%.c=%-rt.ll)
