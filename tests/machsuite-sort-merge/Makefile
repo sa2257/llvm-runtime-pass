@@ -1,5 +1,6 @@
-KERNEL     = sort
+KERNEL     = vvadd
 HW_SRCS    = $(KERNEL).c
-HOST_SRCS  = bench.c
+HOST_SRCS  = main.c
+RT_SRCS    = embed.c
 
 include common.mk

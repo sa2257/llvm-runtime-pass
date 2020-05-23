@@ -93,5 +93,5 @@ void run_benchmark() {
 
 int main () {
     run_benchmark();
-    return 1;
+    return 0;
 }
