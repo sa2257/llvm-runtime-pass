@@ -450,7 +450,7 @@ double rtlib_double(double *in1, double *in2, int ins) {
 }
 
 void log_val(double i) {
-      printf("Log: %f\n", i);
+     // printf("Log: %f\n", i);
 }
 
 // To replace instructions
@@ -468,7 +468,7 @@ double chain_replace(double in1, double in2, double in3, double in4) {
     char *module = "overload";
     char *function = "call_chain";
     double output = call_chain_sim(module, function, in1, in2, in3, in4);
-    printf("Output in C: %f\n",output);
+    //printf("Output in C: %f\n",output);
     return output;
 }
 
@@ -479,4 +479,14 @@ void func_replace(double* in1, double* in2, double* out) {
     int ret = call_func_sim(module, function, in1, in2, out, 4096);
     if (ret > 0)
         fprintf(stderr, "Python function embedding returns error: %d!\n",ret);
+}
+
+// To replace functions
+void diamond_replace(double* in1, double* in2, double* out) {
+    for (int i = 0; i < 4096; i++) {
+        double im1 = in1[i] + in2[i];
+        double im2 = im1 * 10;
+        double im3 = im1 * 0.1;
+        out[i] = im2 + im3;
+    }
 }

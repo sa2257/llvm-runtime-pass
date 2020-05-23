@@ -50,10 +50,10 @@ bool LeechPass::runOnModule(Module &M)
     
     for (auto& F : M) {
         if (SwitchOn)
-            //modified |= runtimeForInstruction(F);
+            modified |= runtimeForInstruction(F);
             //modified |= runtimeForSubBlock(F);
             //modified |= runtimeForBasicBlock(F);
-            modified |= runtimeForFunction(F);
+            //modified |= runtimeForFunction(F);
     }
     
     return modified;
@@ -115,7 +115,7 @@ bool LeechPass::runtimeForBasicBlock(Function &F) {
     bool modified = false;
     
     // if function not selected, llvm goes crazy
-    if (F.getName() == "diamond") {
+    if (F.getName() == "kernel") {
         /* Select a basic block */
         BasicBlock* workList = NULL; // To collect replaced instructions within iterator
 	    for (auto& B : F) {
@@ -188,7 +188,7 @@ bool LeechPass::runtimeForSubBlock(Function &F) {
 	);
     
     // if function not selected, llvm goes crazy
-    if (F.getName() == "diamond") {
+    if (F.getName() == "kernel") {
 		for (auto &B: F) {
             list <Instruction*> Selected;
         /* Select a basic block */
