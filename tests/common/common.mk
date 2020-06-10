@@ -16,7 +16,8 @@ OPT       := /usr/local/opt/llvm/bin/opt
 ASMFLAG   := -S
 LLVMFLAG  := -emit-llvm
 CXXFLAGS  := -O1 
-RTFLAGS   := -load ../../build/skeleton/libLeechPass.so --leech
+#RTFLAGS   := -load ../../build/skeleton/libLeechPass.so --leech
+RTFLAGS   := -load ../../build/skeleton/libPragmaPass.so --pragma
 PASSFLAGS := -select
 
 # Create assembly.
@@ -29,7 +30,8 @@ PASSFLAGS := -select
 
 # Add runtime library pass on kernel.
 $(KERNEL)-rt.ll: $(KERNEL).ll
-	$(OPT) $(RTFLAGS) $(PASSFLAGS) $(ASMFLAG) $^ -o $@
+	$(OPT) $(RTFLAGS) $(ASMFLAG) $^ -o $@
+#	$(OPT) $(RTFLAGS) $(PASSFLAGS) $(ASMFLAG) $^ -o $@
 
 # Link the program.
 $(TARGET): $(RTPASS) $(HOST) $(RTOBJT)
@@ -51,5 +53,5 @@ runtime: $(TARGET)
 
 .PHONY: clean
 clean:
-	rm -rf $(LLVMS) $(PASSES) $(TARGET) $(SIMPLE)  __pycache__ output.data
+	rm -rf $(LLVMS) $(PASSES) $(TARGET) $(SIMPLE) __pycache__ output.data
 

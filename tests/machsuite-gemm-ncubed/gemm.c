@@ -1,5 +1,10 @@
 #include "gemm.h"
 
+int foo(int param) {
+    int __attribute__((annotate("my annotation"))) var = param;
+    return var;
+}
+
 void kernel( TYPE m1[N], TYPE m2[N], TYPE prod[N] ){
 #pragma HLS INTERFACE s_axilite port=m1
 #pragma HLS INTERFACE s_axilite port=m2
@@ -9,6 +14,7 @@ void kernel( TYPE m1[N], TYPE m2[N], TYPE prod[N] ){
     int k_col, i_col;
     TYPE mult;
 
+    int val = foo(row_size);
     outer:for(i=0;i<row_size;i++) {
         middle:for(j=0;j<col_size;j++) {
             i_col = i * col_size;
@@ -21,4 +27,5 @@ void kernel( TYPE m1[N], TYPE m2[N], TYPE prod[N] ){
             prod[i_col + j]  = sum;
         }
     }
+    fprintf(stdout, "val is %d\n", val);
 }

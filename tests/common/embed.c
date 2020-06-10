@@ -450,7 +450,7 @@ double rtlib_double(double *in1, double *in2, int ins) {
 }
 
 void log_val(double i) {
-     // printf("Log: %f\n", i);
+     printf("Log: %f\n", i);
 }
 
 // To replace instructions
