@@ -3,7 +3,7 @@ void log_val(double i) {
 }
 
 // To replace functions
-void matmul_accel(double* m1, double* m2, double* prod, int row_size, int col_size) {
+void matmul_accel(double *m1, double *m2, double *prod, int row_size, int col_size) {
     int row_arr = 16; int col_arr = 16;
     tilei:for(int ii = 0; ii < row_size; ii += row_arr) {
     tilej:for(int jj = 0; jj < col_size; jj += col_arr) {
@@ -20,5 +20,4 @@ void matmul_accel(double* m1, double* m2, double* prod, int row_size, int col_si
             }
         }
     }}
-    printf("Sample: %f\n", prod[0]);
 }
